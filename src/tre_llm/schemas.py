@@ -136,6 +136,9 @@ class InstalledModel(BaseModel):
     installed_at: str
     source: Literal["downloaded", "imported"] = "downloaded"
     verified: bool = True
+    # Free-form provenance for imported artifacts (e.g. base_model, adapter,
+    # license). Empty for registry downloads — their provenance is `artifact`.
+    provenance: dict[str, str] = {}
 
 
 # ---------------------------------------------------------------- runtime

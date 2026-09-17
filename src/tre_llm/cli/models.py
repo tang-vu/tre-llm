@@ -62,6 +62,8 @@ def list_(json: bool = typer.Option(False, "--json")) -> None:
         console.print("[bold]Import cục bộ:[/bold]")
         for v in imported:
             console.print(f"  • {v.registry_id}: {v.local_path}")
+            for k, pv in v.provenance.items():
+                console.print(f"      {k}: {pv}")
 
 
 @app.command("pull", help="Tải model từ registry (resume + verify SHA-256).")
@@ -117,9 +119,23 @@ def import_(
     path: Path = typer.Argument(..., exists=True),  # noqa: B008 — typer idiom
     registry_id: str = typer.Option("", "--id", help="id tuỳ chọn"),
     move: bool = typer.Option(False, "--move", help="Chuyển file vào cache của Tre."),
+    base_model: str = typer.Option("", "--base-model", help="Model gốc (vd Qwen/Qwen3-0.6B)."),
+    adapter: str = typer.Option("", "--adapter", help="Adapter/recipe đã merge (nếu có)."),
+    license_: str = typer.Option("", "--license", help="License của artifact."),
+    notes: str = typer.Option("", "--notes", help="Ghi chú provenance ngắn."),
 ) -> None:
+    prov = {
+        k: v
+        for k, v in {
+            "base_model": base_model,
+            "adapter": adapter,
+            "license": license_,
+            "notes": notes,
+        }.items()
+        if v
+    }
     try:
-        inst = import_local(path, registry_id or None, move=move)
+        inst = import_local(path, registry_id or None, move=move, provenance=prov)
     except Exception as exc:
         die(str(exc))
     console.print(f"[green]Đã import:[/green] {inst.registry_id} → {inst.local_path}")

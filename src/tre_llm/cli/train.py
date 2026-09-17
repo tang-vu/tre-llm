@@ -85,3 +85,28 @@ def run_(
         emit_json(rep)
         return
     console.print(rep["summary"])
+
+
+@app.command("export", help="Merge adapter vào base → GGUF + quantize (cần llama.cpp source).")
+def export(
+    adapter: str = typer.Option(..., "--adapter", help="Thư mục adapter (chứa adapter_config.json)"),
+    base: str = typer.Option("", "--base", help="HF base model id (mặc định đọc từ adapter_config)"),
+    out: str = typer.Option("", "--out", help="Đường dẫn .gguf đầu ra"),
+    quant: str = typer.Option("Q4_K_M", "--quant"),
+    llama_src: str = typer.Option("", "--llama-src", help="Thư mục source llama.cpp (chứa convert_hf_to_gguf.py)"),
+    keep_f16: bool = typer.Option(False, "--keep-f16"),
+    json: bool = typer.Option(False, "--json"),
+) -> None:
+    from tre_llm.training.export import export_gguf
+
+    try:
+        card = export_gguf(adapter, base_model=base, out_gguf=out, quant=quant,
+                           llama_src=llama_src, keep_f16=keep_f16)
+    except Exception as exc:
+        die(str(exc))
+    if json:
+        emit_json(card)
+        return
+    console.print(f"[green]Xong.[/green] {card['gguf']} ({card['size_bytes'] / 2**20:.0f} MiB, {card['quant']})")
+    console.print(f"  base: {card['base_model']} + adapter: {card['adapter_dir']}")
+    console.print("  Đăng ký: `tre models import <gguf> --id <tên-tre>` rồi `tre eval` để đo.")

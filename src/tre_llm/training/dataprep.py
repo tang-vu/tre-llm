@@ -17,7 +17,7 @@ from typing import Any
 
 import yaml
 
-REQUIRED_SOURCE_FIELDS = {"path", "license", "provenance"}
+REQUIRED_SOURCE_FIELDS = {"license", "provenance"}
 
 _VI_CHARS = re.compile(r"[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]", re.I)
 
@@ -42,8 +42,28 @@ def _flatten(messages: list[dict[str, str]]) -> str:
     return "\n".join(parts)
 
 
+_SHAREGPT_ROLES = {"human": "user", "gpt": "assistant", "system": "system"}
+
+
 def _norm_row(row: dict[str, Any], fmt: str) -> dict[str, Any] | None:
     """Normalize a raw source row to {text, messages}; None if invalid."""
+    if fmt == "sharegpt" or "conversations" in row:
+        msgs = []
+        for m in row.get("conversations") or []:
+            role = _SHAREGPT_ROLES.get(str(m.get("from", "")).lower())
+            content = str(m.get("value", "")).strip()
+            if role is None or not content:
+                return None
+            msgs.append({"role": role, "content": content})
+        if not msgs or msgs[-1].get("role") != "assistant":
+            return None
+        return {"text": _flatten(msgs), "messages": msgs}
+    if fmt == "prompt_response" or ("prompt" in row and "response" in row):
+        msgs = [
+            {"role": "user", "content": str(row["prompt"]).strip()},
+            {"role": "assistant", "content": str(row["response"]).strip()},
+        ]
+        return {"text": _flatten(msgs), "messages": msgs}
     if fmt == "messages" or "messages" in row:
         msgs = row.get("messages") or []
         if not msgs or msgs[-1].get("role") != "assistant":
@@ -60,6 +80,31 @@ def _norm_row(row: dict[str, Any], fmt: str) -> dict[str, Any] | None:
     return None
 
 
+def _iter_source_rows(recipe_dir: Path, src: dict[str, Any]):
+    """Yield raw rows from a local JSONL file or a Hugging Face dataset."""
+    if src.get("hf"):
+        from datasets import load_dataset
+
+        ds = load_dataset(src["hf"], split=src.get("split", "train"))
+        max_rows = int(src.get("max_rows", 0))
+        for i, row in enumerate(ds):
+            if max_rows and i >= max_rows:
+                break
+            yield dict(row)
+        return
+    f = recipe_dir / src["path"]
+    if not f.is_file():
+        raise FileNotFoundError(f"Nguồn dữ liệu không tồn tại: {f}")
+    for line in f.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            yield json.loads(line)
+        except json.JSONDecodeError:
+            yield {"__invalid__": True}
+
+
 def load_manifest(recipe_dir: Path, manifest_name: str) -> dict[str, Any]:
     mpath = recipe_dir / manifest_name
     if not mpath.is_file():
@@ -71,8 +116,10 @@ def load_manifest(recipe_dir: Path, manifest_name: str) -> dict[str, Any]:
         missing = REQUIRED_SOURCE_FIELDS - set(s)
         if missing:
             raise ValueError(f"Source thiếu trường {missing}: {s}")
+        if bool(s.get("path")) == bool(s.get("hf")):
+            raise ValueError(f"Source cần đúng một trong 'path' (local) hoặc 'hf' (dataset id): {s}")
         if s.get("license", "").upper() in ("", "UNKNOWN"):
-            raise ValueError(f"Source thiếu license rõ ràng: {s.get('path')}")
+            raise ValueError(f"Source thiếu license rõ ràng: {s.get('path') or s.get('hf')}")
     return m
 
 
@@ -85,35 +132,34 @@ def prepare(recipe_path: str) -> dict[str, Any]:
 
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
-    stats = {"sources": [], "dropped_invalid": 0, "dropped_dup": 0}
+    stats = {"sources": [], "dropped_invalid": 0, "dropped_dup": 0, "dropped_long": 0}
+    max_chars = int(data.get("max_chars", 0))  # 0 = không giới hạn
     for src in manifest["sources"]:
-        f = p.parent / src["path"]
-        if not f.is_file():
-            raise FileNotFoundError(f"Nguồn dữ liệu không tồn tại: {f}")
+        src_name = src.get("path") or src.get("hf")
         n_src = 0
-        for line in f.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                raw = json.loads(line)
-            except json.JSONDecodeError:
+        for raw in _iter_source_rows(p.parent, src):
+            if raw.pop("__invalid__", False):
                 stats["dropped_invalid"] += 1
                 continue
             norm = _norm_row(raw, src.get("format", ""))
             if norm is None or len(norm["text"]) < 20:
                 stats["dropped_invalid"] += 1
                 continue
+            if max_chars and len(norm["text"]) > max_chars:
+                stats["dropped_long"] += 1
+                continue
             h = hashlib.sha256(_fold(norm["text"]).encode()).hexdigest()
             if h in seen:
                 stats["dropped_dup"] += 1
                 continue
             seen.add(h)
-            norm["source"] = src["path"]
+            norm["source"] = src_name
             norm["license"] = src["license"]
             rows.append(norm)
             n_src += 1
-        stats["sources"].append({"path": src["path"], "rows": n_src, "license": src["license"], "provenance": src["provenance"]})
+        stats["sources"].append(
+            {"source": src_name, "rows": n_src, "license": src["license"], "provenance": src["provenance"]}
+        )
 
     rng = random.Random(int(recipe.get("seed", 42)))
     rng.shuffle(rows)
@@ -133,7 +179,7 @@ def prepare(recipe_path: str) -> dict[str, Any]:
             "prepared_file": str(out),
             "prepared_sha256": hashlib.sha256(out.read_bytes()).hexdigest(),
             "seed": int(recipe.get("seed", 42)),
-            "note": "format text đơn giản hóa cho pipeline test — chưa phải chat template của base model",
+            "note": "text đơn giản hóa để tham khảo; trainer dùng trường `messages` với chat template của base model",
         }
     )
     (p.parent / "prepared.stats.json").write_text(

@@ -1,0 +1,30 @@
+# Tre Adapt recipe — tre-vi-0.6b: model chat tiếng Việt "đủ dùng" trên CPU.
+# Base: Qwen3-0.6B (dense, Apache-2.0). Adapter: LoRA tre-adapter-vi.
+# Chạy thật cần GPU ~10 GiB VRAM (T4/P100 — Kaggle/Colab free đủ).
+# Trên máy chỉ có CPU, dùng --recipe này với cpu_smoke_ok sẽ bị chặn:
+# recipe chất lượng không được phép "đánh lửa" trên CPU rồi ghi là đã train.
+name: tre-vi-0.6b
+base_model: "Qwen/Qwen3-0.6B"
+seed: 42
+output_dir: "training-out/tre-vi-0.6b"
+est_vram_gb: 8
+cpu_smoke_ok: false
+device: auto
+max_minutes: 180            # budget run thật — T4 ~45-90 phút cho 3.5k rows × 2 epochs
+data:
+  manifest: "manifest.yaml"
+  prepared_file: "prepared.jsonl"
+  train_fraction: 0.95
+  max_chars: 3000        # bỏ hội thoại quá dài — giữ seq 1024 hiệu quả
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  targets: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+sft:
+  epochs: 2
+  batch_size: 4
+  grad_accum: 4
+  lr: 0.0001
+  max_length: 1024
+  save_steps: 200
