@@ -82,8 +82,17 @@ def run_training(recipe_path: str) -> dict:
     rows = [json.loads(line) for line in (p.parent / data_file).read_text(encoding="utf-8").splitlines() if line.strip()]
     train_frac = float(recipe.get("data", {}).get("train_fraction", 0.9))
     cut = max(1, int(len(rows) * train_frac))
-    train_ds = Dataset.from_list(rows[:cut])
-    eval_ds = Dataset.from_list(rows[cut:]) if rows[cut:] else None
+    # Conversational format ("messages") → TRL áp chat template của base model.
+    # Fixture cũ chỉ có "text" — giữ đường fallback cho pipeline test.
+    has_messages = any("messages" in r for r in rows[:20])
+    cols = ["messages"] if has_messages else None
+    train_rows = rows[:cut]
+    eval_rows = rows[cut:]
+    if cols:
+        train_rows = [{"messages": r["messages"]} for r in train_rows]
+        eval_rows = [{"messages": r["messages"]} for r in eval_rows]
+    train_ds = Dataset.from_list(train_rows)
+    eval_ds = Dataset.from_list(eval_rows) if eval_rows else None
 
     # Device: recipe can force cpu (cuda.is_available() is true even with only
     # a few hundred MiB free — not enough for weights).
@@ -105,7 +114,7 @@ def run_training(recipe_path: str) -> dict:
     )
     model = get_peft_model(model, peft_cfg)
 
-    max_minutes = float(config.get("budget", "train_max_minutes", default=30))
+    max_minutes = float(recipe.get("max_minutes") or config.get("budget", "train_max_minutes", default=30))
     sft = recipe.get("sft", {})
     args = SFTConfig(
         output_dir=str(out_dir),
@@ -119,7 +128,7 @@ def run_training(recipe_path: str) -> dict:
         save_strategy="steps",
         save_steps=int(sft.get("save_steps", 100)),
         report_to=[],
-        dataset_text_field=sft.get("text_field", "text"),
+        **({} if cols else {"dataset_text_field": sft.get("text_field", "text")}),
         use_cpu=not use_cuda,
     )
     budget = _time_budget_callback(max_minutes * 60)

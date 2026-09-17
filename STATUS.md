@@ -1,6 +1,6 @@
 # STATUS — TreLLM v0.1
 
-Cập nhật lần cuối: 2026-09-17 (session 2, cuối ngày)
+Cập nhật lần cuối: 2026-09-17 (session 3, sau hướng "model riêng")
 
 ## Trạng thái milestone
 
@@ -48,10 +48,18 @@ Cập nhật lần cuối: 2026-09-17 (session 2, cuối ngày)
 - Recipe `tiny-vi-notes`: `device: cpu`, `cpu_smoke_ok: true` — pipeline test, KHÔNG phải cải thiện chất lượng
 - `tre train run` XONG: 45.6 phút CPU, dừng ở step 2/4 (budget 30ph enforce ở step granularity → overshoot), train_loss 3.705, adapter LoRA r=8 (112 tensors) verify load được bằng peft — `training-out/tiny-vi-notes/` + `run-report.json` (status `pipeline-smoke`, `time_budget_exceeded: true`)
 - Fix transformers 4.57: `max_time` bị xoá khỏi TrainingArguments → bound bằng `_time_budget_callback`
+- **Session 3 — loop "model riêng" đã đóng:**
+  - `tre train export --adapter … --out x.gguf` — merge LoRA vào base → convert_hf_to_gguf.py (llama.cpp source cache `~/.cache/tre-llm/llama.cpp-b11022-src`) → llama-quantize Q4_K_M → GGUF + metadata sidecar
+  - `tre models import` nhận `--base-model/--adapter/--license/--notes` → provenance lưu trong installed.json, hiện trong `tre models list`
+  - Dataprep hỗ trợ HF datasets (`hf:` source) + format sharegpt/conversations, prompt_response, instruction+output, text; `max_chars` filter
+  - `run.py` train trên `messages` (chat template thật của base model qua TRL), fallback `text`
+  - Recipe thật `recipes/tre-vi-0.6b/`: 3 nguồn (5CD-AI/Vietnamese-Multi-turn-Chat-Alpaca Apache-2.0, vlinhd11/vietnamese-sft-10k CC-BY-4.0, fixture local) → **3,742 dòng sạch** (3,554 train/188 eval, 1 dup, 1 invalid, 2,272 long dropped), sha256 `5b065ae1…`
+  - Notebook Kaggle free-tier: `notebooks/train-tre-vi-kaggle.ipynb` (T4/P100, clone repo → prepare → train → zip adapter). `max_minutes: 180`
+  - Preflight `tre-vi-0.6b` trên máy này: **exit 2, [THIẾU] VRAM 882 MiB < 8 GiB** — đúng thiết kế, không chạy được local
 
 ## Verified end-to-end (2026-09-17)
 
-- **63 unit/protocol tests pass**, `ruff check` sạch
+- **66 unit/protocol tests pass**, `ruff check` sạch
 - `tre serve --port 8471` → `/api/status` upstream_ready=true, model `qwen3.5-0.8b-q4_k_m`
 - `POST /api/chat` SSE: conv→60 tokens→done(21.9 tok/s decode, 124.5 tok/s prompt)→[DONE]; persist SQLite
 - `POST /api/ask` câu không dấu → FTS5 → trả lời grounded kèm trích dẫn [1], `grounded:true`
@@ -59,6 +67,9 @@ Cập nhật lần cuối: 2026-09-17 (session 2, cuối ngày)
 - `uv build` → wheel + sdist OK (wheel build từ sdist → sdist đủ file)
 - Clean install: venv mới + wheel → `tre --version` = 0.1.0, `tre doctor` thấy runtime+model
 - `tre report --format md` → markdown sạch, không lộ path cá nhân
+- **`tre-vi-0.6b-q4_k_m` GGUF chạy thật** qua llama.cpp (~37 tok/s, "Hà Nội có 12 quận." — style ngắn gọn từ adapter)
+- **Eval dev trước/sau (n=5, mẫu nhỏ):** base Qwen3-0.6B mean 0.375/pass 0.25 → tre-vi-0.6b mean 0.625/pass 0.5 — `eval-tre-viet-dev-20260917-160057.json` / `-160125.json`
+- Exit codes verify: `train validate`/`preflight` fail → exit 2 (lưu ý: `$?` trong exec wrapper luôn đọc 0 — phải chạy lệnh đơn để xem code thật)
 
 ## Lệnh chạy đã kiểm chứng
 
@@ -72,6 +83,9 @@ cd apps/web && npm install && npm run build
 .venv/bin/tre train validate --data recipes/tiny-vi-notes/prepared.jsonl
 .venv/bin/tre train preflight --recipe recipes/tiny-vi-notes/recipe.yaml
 .venv/bin/tre train run --recipe recipes/tiny-vi-notes/recipe.yaml
+.venv/bin/tre train export --adapter training-out/tiny-vi-notes/adapter --out /tmp/x.gguf
+.venv/bin/tre models import x.gguf --id my-model --base-model Qwen/Qwen3-0.6B --license apache-2.0
+.venv/bin/tre eval --suite tre-viet --split dev --model tre-vi-0.6b-q4_k_m
 .venv/bin/tre report --format md --out /tmp/tre-report
 ~/.local/bin/uv build
 ```
@@ -87,5 +101,6 @@ cd apps/web && npm install && npm run build
 
 ## Việc tiếp theo
 
-1. Push repo nếu user yêu cầu (chưa push)
-2. Roadmap: GPU pilot khi có máy đủ VRAM; judge model cho rubric items; PDF/OCR ingest
+1. Chạy `notebooks/train-tre-vi-kaggle.ipynb` trên Kaggle (P100/T4 miễn phí) → tải adapter về → `tre train export` → `tre models import` → eval trước/sau → đó mới là `tre-vi` run nghiêm túc
+2. Push repo nếu user yêu cầu (chưa push)
+3. Roadmap: GPU pilot khi có máy đủ VRAM; judge model cho rubric items; PDF/OCR ingest

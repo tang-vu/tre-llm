@@ -283,7 +283,12 @@ def pull(
     return inst
 
 
-def import_local(path: Path, registry_id: str | None = None, move: bool = False) -> InstalledModel:
+def import_local(
+    path: Path,
+    registry_id: str | None = None,
+    move: bool = False,
+    provenance: dict[str, str] | None = None,
+) -> InstalledModel:
     """Register a local GGUF file without copying unless `move` is set.
 
     Imported files stay at their original path — ownership stays with the user;
@@ -316,6 +321,7 @@ def import_local(path: Path, registry_id: str | None = None, move: bool = False)
         installed_at=datetime.now(UTC).isoformat(),
         source="imported",
         verified=True,  # hash of the file as imported; provenance is the user's
+        provenance=provenance or {},
     )
     register(inst)
     return inst

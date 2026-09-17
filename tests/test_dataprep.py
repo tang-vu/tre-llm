@@ -64,3 +64,78 @@ def test_validate_flags_non_vietnamese(tmp_path):
     rep = validate(f, check_leakage=False)
     assert not rep["ok"]
     assert any("tiếng Việt" in i for i in rep["issues"])
+
+
+def test_norm_sharegpt_and_prompt_response():
+    from tre_llm.training.dataprep import _norm_row
+
+    sharegpt = _norm_row(
+        {"conversations": [
+            {"from": "human", "value": "Hà Nội là gì?"},
+            {"from": "gpt", "value": "Thủ đô của Việt Nam."},
+        ]},
+        "sharegpt",
+    )
+    assert sharegpt and sharegpt["messages"][-1]["role"] == "assistant"
+
+    pr = _norm_row({"prompt": "1+1?", "response": "Bằng 2."}, "prompt_response")
+    assert pr and pr["messages"][0]["role"] == "user"
+
+    # sharegpt không kết bằng assistant → bỏ
+    bad = _norm_row({"conversations": [{"from": "human", "value": "chỉ hỏi"}]}, "sharegpt")
+    assert bad is None
+
+
+def test_manifest_requires_path_xor_hf(tmp_path):
+    import pytest
+
+    from tre_llm.training.dataprep import load_manifest
+
+    (tmp_path / "m.yaml").write_text(
+        "sources:\n"
+        "  - path: a.jsonl\n"
+        "    hf: repo/x\n"
+        "    license: CC-BY-4.0\n"
+        "    provenance: test\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="path.*hf|hf.*path"):
+        load_manifest(tmp_path, "m.yaml")
+
+
+def test_prepare_drops_long_rows(tmp_path):
+    from tre_llm.training.dataprep import prepare
+
+    rows = [
+        {"messages": [
+            {"role": "user", "content": "Câu hỏi ngắn số một, đủ dài để không rỗng."},
+            {"role": "assistant", "content": "Trả lời ngắn số một."},
+        ]},
+        {"messages": [
+            {"role": "user", "content": "Câu hỏi ngắn số hai, cũng đủ dài."},
+            {"role": "assistant", "content": "Trả lời ngắn số hai."},
+        ]},
+        {"messages": [
+            {"role": "user", "content": "Câu hỏi rất dài " + "x" * 300},
+            {"role": "assistant", "content": "Trả lời."},
+        ]},
+        {"messages": [
+            {"role": "user", "content": "Câu hỏi dài khác " + "y" * 250},
+            {"role": "assistant", "content": "Trả lời khác."},
+        ]},
+    ]
+    (tmp_path / "raw.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in rows), encoding="utf-8"
+    )
+    (tmp_path / "manifest.yaml").write_text(
+        "sources:\n  - path: raw.jsonl\n    license: CC-BY-4.0\n    provenance: test\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "recipe.yaml").write_text(
+        "base_model: x\ndata:\n  manifest: manifest.yaml\n  prepared_file: prepared.jsonl\n"
+        "  train_fraction: 0.5\n  max_chars: 200\n",
+        encoding="utf-8",
+    )
+    stats = prepare(str(tmp_path / "recipe.yaml"))
+    assert stats["dropped_long"] > 0
+    assert stats["total_rows"] < 4

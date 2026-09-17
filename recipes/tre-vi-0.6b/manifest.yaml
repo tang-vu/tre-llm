@@ -1,0 +1,22 @@
+version: 1
+description: >
+  Dataset SFT tiếng Việt cho tre-vi-0.6b — mixture các nguồn license sạch
+  (Apache-2.0 / CC-BY-4.0) + fixture ghi chú viết tay. Không dùng dữ liệu
+  alpaca-dịch vì provenance OpenAI không rõ license thương mại.
+sources:
+  - hf: "5CD-AI/Vietnamese-Multi-turn-Chat-Alpaca"
+    split: train
+    format: sharegpt
+    max_rows: 4000
+    license: "Apache-2.0"
+    provenance: "hf:5CD-AI/Vietnamese-Multi-turn-Chat-Alpaca — multi-turn chat tiếng Việt"
+  - hf: "vlinhd11/vietnamese-sft-10k"
+    split: train
+    format: prompt_response
+    max_rows: 2000
+    license: "CC-BY-4.0"
+    provenance: "hf:vlinhd11/vietnamese-sft-10k — SFT đơn lượt, gồm cả mẫu từ chối an toàn"
+  - path: "data/raw/notes-sft.jsonl"
+    format: messages
+    license: "CC-BY-4.0"
+    provenance: "curated-fixture: ghi chú viết tay bởi maintainer (chung với tiny-vi-notes)"
