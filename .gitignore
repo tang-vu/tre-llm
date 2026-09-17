@@ -13,6 +13,7 @@ uv.lock.bak
 # Node / web build
 node_modules/
 apps/web/dist/assets/
+*.tsbuildinfo
 
 # TreLLM local state
 configs/local.yaml

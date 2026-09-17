@@ -93,6 +93,10 @@ def create_app(server: RunningServer | None = None, active_model: str = "") -> F
 
     app = FastAPI(title="TreLLM", version=__version__, docs_url=None, redoc_url=None, openapi_url=None)
 
+    from tre_llm.server.api import router as tre_router
+
+    app.include_router(tre_router)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[],  # same-origin only; explicit LAN mode would reconfigure this
