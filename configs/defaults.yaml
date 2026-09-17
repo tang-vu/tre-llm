@@ -1,0 +1,28 @@
+# TreLLM developer resource budget. All values are hard defaults from the
+# product spec; override locally with configs/local.yaml (gitignored).
+budget:
+  max_download_gib: 8          # total new model-weight downloads
+  min_free_disk_gib: 5         # keep at least this free (or 10% — larger wins)
+  reserve_ram_fraction: 0.20   # keep >=20% RAM free (min 1 GiB)
+  calibration_timeout_s: 120   # per candidate
+  calibration_max_candidates: 3
+  train_max_minutes: 30        # active training time for a pilot
+runtime:
+  llama_cpp_build: "b11022"
+  llama_cpp_commit: "f172be756"
+  ubuntu_x64_url: "https://github.com/ggml-org/llama.cpp/releases/download/b11022/llama-b11022-bin-ubuntu-x64.tar.gz"
+  ubuntu_x64_sha256: "9be8b82ef44c5488155ce718d1ab4dcbd6b3aa999c70d1d44dc0ac11e868daed"
+  win_x64_url: "https://github.com/ggml-org/llama.cpp/releases/download/b11022/llama-b11022-bin-win-cpu-x64.zip"
+  macos_arm64_url: "https://github.com/ggml-org/llama.cpp/releases/download/b11022/llama-b11022-bin-macos-arm64.tar.gz"
+defaults:
+  goal: balanced
+  ctx_size: 4096
+  max_output: 512
+  temperature: 0.7
+  top_p: 0.8
+  top_k: 20
+  presence_penalty: 1.5
+  enable_thinking: false
+server:
+  host: 127.0.0.1
+  port: 8471
