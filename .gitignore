@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 .venv/
 *.egg-info/
-dist/
+/dist/
 build/
 .pytest_cache/
 .mypy_cache/
@@ -12,8 +12,8 @@ uv.lock.bak
 
 # Node / web build
 node_modules/
-apps/web/dist/assets/
 *.tsbuildinfo
+# apps/web/dist/ ĐƯỢC track: wheel ship sẵn UI đã build, sdist cần dist để rebuild wheel.
 
 # TreLLM local state
 configs/local.yaml
