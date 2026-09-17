@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from tre_llm.documents.service import (
     add_document,
     answer_question,
@@ -9,7 +11,6 @@ from tre_llm.documents.service import (
     remove_document,
     search,
 )
-from tre_llm.storage.db import get_db
 
 
 def _doc(tmp_path, name="ghi-chu.md", text=None) -> Path:
@@ -40,14 +41,14 @@ def test_reject_oversize_and_bad_type(tmp_path):
     big.write_bytes(b"x" * (5 * 1024 * 1024))
     try:
         add_document(big)
-        assert False, "phải reject file >4MiB"
+        pytest.fail("phải reject file >4MiB")
     except ValueError:
         pass
     pdf = tmp_path / "x.pdf"
     pdf.write_bytes(b"%PDF-1.4")
     try:
         add_document(pdf)
-        assert False
+        pytest.fail()
     except ValueError as e:
         assert "pdf" in str(e).lower() or "hỗ trợ" in str(e)
 

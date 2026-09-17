@@ -1,0 +1,31 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.12 && uv sync
+      - run: uv run ruff check src tests
+      - run: uv run pytest tests/ -q -m "not integration and not gpu"
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: cd apps/web && npm ci && npm run build
+  integration:
+    # Real-model job: only runs when explicitly triggered or on main with the
+    # self-hosted runner label; uses cached runtime+model, never mocks.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, tre-gpu-cpu]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.12 && uv sync
+      - run: uv run pytest tests/ -q -m integration
+      - run: uv run tre eval --suite tre-viet --split dev

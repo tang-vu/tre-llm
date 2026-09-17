@@ -15,7 +15,7 @@ app = typer.Typer(
     pretty_exceptions_show_locals=False,
 )
 
-from tre_llm.cli import documents, lab, models, train  # noqa: E402
+from tre_llm.cli import documents, models, train  # noqa: E402
 
 app.add_typer(models.app, name="models", help="Quản lý model: list/pull/import/remove")
 app.add_typer(documents.app, name="documents", help="Tài liệu cục bộ: add/list/remove")

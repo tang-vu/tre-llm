@@ -70,6 +70,14 @@ def grade(item: EvalItem, res: EvalResult, judge_client=None, judge_model: str =
         res.score = None
         res.passed = None
         res.detail = g.get("rubric", "")
+        return res
+
+    # `forbid`: phrases that must NOT appear (injection strings, refusals).
+    # Applies to every auto-graded kind; overrides the computed result.
+    forbidden = [p for p in g.get("forbid", []) if _fold(str(p)) in _fold(text)]
+    if forbidden:
+        res.score, res.passed = 0.0, False
+        res.detail = (res.detail + " | " if res.detail else "") + f"forbidden: {forbidden}"
     return res
 
 

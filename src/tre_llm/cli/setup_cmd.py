@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import platform
 import tarfile
 import zipfile
 from pathlib import Path
 
-import httpx
 import typer
 from rich.progress import BarColumn, DownloadColumn, Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -17,8 +15,8 @@ from tre_llm import config, paths
 from tre_llm.cli.util import console, die, emit_json
 from tre_llm.hardware import collect
 from tre_llm.planner.select import build_plan
-from tre_llm.registry import catalog, get, installed, pull, sha256_file
-from tre_llm.registry.store import Downloader, StoreError, disk_free, hf_resolve_url
+from tre_llm.registry import catalog, get, installed, pull
+from tre_llm.registry.store import Downloader, StoreError, disk_free
 from tre_llm.runtimes.llamacpp import find_binary, probe_version
 from tre_llm.schemas import Goal
 from tre_llm.storage.db import get_db
@@ -97,8 +95,8 @@ def run(goal: str = "balanced", model_id: str = "", yes: bool = False, json_mode
         art = get(model_id)
         if art is None:
             die(f"Model '{model_id}' không có trong registry.")
-        from tre_llm.schemas import PlanChoice
         from tre_llm.planner.memory import estimate
+        from tre_llm.schemas import PlanChoice
 
         choice = PlanChoice(artifact_id=art.id)
         choice.memory = estimate(art, choice.ctx_size)
@@ -167,11 +165,11 @@ def run(goal: str = "balanced", model_id: str = "", yes: bool = False, json_mode
                     tasks[name] = tid
                 progress.update(tid, completed=done, total=total)
 
-            inst = pull(art, on_progress=on_prog, downloader=dl)
+            pull(art, on_progress=on_prog, downloader=dl)
     except KeyboardInterrupt:
         dl.cancel()
         console.print("[yellow]Đã huỷ — giữ .part để resume.[/yellow]")
-        raise typer.Exit(130)
+        raise SystemExit(130) from None
     except StoreError as exc:
         die(str(exc))
 

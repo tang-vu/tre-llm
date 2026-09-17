@@ -12,7 +12,7 @@ app = typer.Typer(no_args_is_help=True)
 
 
 @app.command("add", help="Nạp file .txt/.md vào chỉ mục cục bộ.")
-def add(path: Path = typer.Argument(..., exists=True)) -> None:
+def add(path: Path = typer.Argument(..., exists=True)) -> None:  # noqa: B008 — typer idiom
     from tre_llm.documents.service import add_document
 
     try:

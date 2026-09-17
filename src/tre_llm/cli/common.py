@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tre_llm import config
 from tre_llm.cli.util import die, warn
-from tre_llm.hardware import collect, fingerprint
+from tre_llm.hardware import collect
 from tre_llm.planner.calibrate import load_cache
 from tre_llm.planner.select import build_plan
 from tre_llm.registry import catalog, installed
@@ -60,8 +60,8 @@ def start_runtime(
     if ctx_override:
         choice.ctx_size = ctx_override
     if not choice.threads:
-        from tre_llm.planner.select import _default_threads
         from tre_llm.hardware import collect as _collect
+        from tre_llm.planner.select import _default_threads
 
         choice.threads = _default_threads(_collect())
     if not choice.ctx_size:

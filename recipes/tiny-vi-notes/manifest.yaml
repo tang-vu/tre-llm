@@ -1,0 +1,7 @@
+version: 1
+description: Fixture SFT tiếng Việt — ghi chú học tập viết tay cho pipeline test.
+sources:
+  - path: "data/raw/notes-sft.jsonl"
+    format: messages
+    license: "CC-BY-4.0"
+    provenance: "curated-fixture: viết tay bởi maintainer cho TreLLM v0.1"

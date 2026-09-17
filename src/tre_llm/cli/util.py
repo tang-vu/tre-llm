@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import typer
 from rich.console import Console
 
 console = Console()
@@ -20,8 +19,10 @@ def emit_json(obj: Any) -> None:
 
 
 def die(msg: str, code: int = 1) -> None:
+    # SystemExit (not typer.Exit): click 8.5+ may swallow Exit raised inside
+    # sub-app commands and return the code as a normal value, yielding exit 0.
     err_console.print(f"[red]Lỗi:[/red] {msg}")
-    raise typer.Exit(code)
+    raise SystemExit(code)
 
 
 def warn(msg: str) -> None:

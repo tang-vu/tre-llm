@@ -21,6 +21,8 @@ configs/local.yaml
 *.part
 training-out/
 *.log
+prepared.jsonl
+prepared.stats.json
 
 # OS/editor
 .DS_Store

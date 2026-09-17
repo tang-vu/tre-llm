@@ -9,6 +9,7 @@ instead of assuming a fixed CLI surface.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import shutil
@@ -257,13 +258,11 @@ class LlamaCppProcess:
                     proc.wait(timeout=5)
         finally:
             if self._log_fh:
-                try:
+                with contextlib.suppress(OSError):
                     self._log_fh.close()
-                except OSError:
-                    pass
                 self._log_fh = None
 
-    def __enter__(self) -> "LlamaCppProcess":
+    def __enter__(self) -> LlamaCppProcess:
         return self
 
     def __exit__(self, *exc) -> None:

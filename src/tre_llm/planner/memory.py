@@ -42,7 +42,7 @@ def kv_cache_mb(artifact: ModelArtifact, ctx_size: int) -> tuple[float, list[str
         # Unknown arch — conservative bound: assume dense transformer,
         # hidden 2048, 32 layers, kv_heads=8, head_dim=128.
         bound = ctx_size * 32 * 8 * 128 * 2 * KV_DTYPE_BYTES / 2**20
-        notes.append("Kiến trúc chưa rõ → chặn trên transformer tiêu chuẩn (32 lớp, GQA 8×128).")
+        notes.append("Kiến trúc chưa rõ → chặn trên transformer tiêu chuẩn (32 lớp, GQA 8×128).")  # noqa: RUF001
         return bound, notes
 
     full_layers = _full_attn_layers(a)
@@ -81,7 +81,7 @@ def estimate(
     # Prefill chunk buffer scales with ubatch tokens, not full ctx.
     prefill_tokens = min(batch_size, ctx_size)
     prefill_extra = prefill_tokens * artifact.params_billion * 0.02  # rough activation bound
-    notes.append("Prefill activation buffer ước lượng thô (~2% params × batch tokens).")
+    notes.append("Prefill activation buffer ước lượng thô (~2% params × batch tokens).")  # noqa: RUF001
 
     subtotal = weights_mb + kv_total + compute + prefill_extra + SERVER_OVERHEAD_MB
     total = subtotal * (1 + SAFETY_FRACTION)

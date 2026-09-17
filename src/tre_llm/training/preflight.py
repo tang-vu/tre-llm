@@ -6,7 +6,6 @@ from pathlib import Path
 
 import yaml
 
-from tre_llm import paths
 from tre_llm.hardware import collect
 
 
@@ -28,7 +27,7 @@ def run_preflight(recipe_path: str) -> dict:
 
     # deps
     try:
-        import torch  # noqa: F401
+        import torch
 
         lines.append(f"  torch {torch.__version__} — cuda={torch.cuda.is_available()}")
     except ImportError:
@@ -65,11 +64,18 @@ def run_preflight(recipe_path: str) -> dict:
     # resources
     hw = collect()
     est_vram = recipe.get("est_vram_gb", 0)
+    cpu_smoke_ok = bool(recipe.get("cpu_smoke_ok", False))
     if hw.gpus and any(g.runtime_available for g in hw.gpus):
         free = min((g.vram_free_mb or 0) for g in hw.gpus if g.runtime_available)
         if est_vram and free < est_vram * 1024:
-            lines.append(f"  [CẢNH BÁO] VRAM trống {free} MiB < ước lượng {est_vram} GiB")
-            ok = False
+            if cpu_smoke_ok:
+                lines.append(
+                    f"  [GHI CHÚ] VRAM trống {free} MiB < {est_vram} GiB → chạy CPU pipeline smoke "
+                    "(chứng minh update+reload, không đo chất lượng)."
+                )
+            else:
+                lines.append(f"  [THIẾU] VRAM trống {free} MiB < ước lượng {est_vram} GiB")
+                ok = False
     else:
         lines.append("  Không có GPU khả dụng → chỉ CPU smoke test (pipeline check, KHÔNG phải quality training).")
     if (hw.ram_available_mb or 0) < 4096:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import typer
 from rich.panel import Panel
 from rich.table import Table
 
@@ -11,7 +10,6 @@ from tre_llm.cli.util import console, emit_json
 from tre_llm.hardware import collect, fingerprint
 from tre_llm.registry import catalog, installed
 from tre_llm.runtimes.llamacpp import capabilities, find_binary, probe_version
-from tre_llm.storage.db import get_db
 from tre_llm.version import __version__
 
 

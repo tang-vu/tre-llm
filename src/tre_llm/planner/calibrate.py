@@ -14,17 +14,15 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-import httpx
-
 from tre_llm import paths
 from tre_llm.inference.client import ChatClient
-from tre_llm.runtimes.llamacpp import LlamaCppProcess, LaunchConfig, probe_version
+from tre_llm.runtimes.llamacpp import LaunchConfig, LlamaCppProcess, probe_version
 from tre_llm.schemas import (
     CalibrationResult,
+    Evidence,
     GenerationRequest,
     ModelArtifact,
     Value,
-    Evidence,
 )
 
 CALIBRATION_TIMEOUT_S = 120

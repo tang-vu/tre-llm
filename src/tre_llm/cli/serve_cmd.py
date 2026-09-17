@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import typer
-
 from tre_llm.cli.common import start_runtime
-from tre_llm.cli.util import console, die
+from tre_llm.cli.util import console
 
 
 def run(host: str = "127.0.0.1", port: int = 8471, model: str = "", attach: str = "") -> None:

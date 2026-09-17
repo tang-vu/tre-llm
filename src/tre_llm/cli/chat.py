@@ -8,7 +8,6 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.text import Text
-import typer
 
 from tre_llm import config
 from tre_llm.cli.common import start_runtime
@@ -63,7 +62,6 @@ def run(
     if system:
         db.add_message(conv_id, "system", system)
 
-    tps_note = ""
     console.print(
         Panel(
             f"[bold]Model:[/bold] {eff.artifact_id}  •  ctx={eff.ctx_size}  •  "
@@ -85,7 +83,7 @@ def run(
             top_p=float(config.get("defaults", "top_p", default=0.8)),
             top_k=int(config.get("defaults", "top_k", default=20)),
             presence_penalty=float(config.get("defaults", "presence_penalty", default=1.5)),
-            enable_thinking=True if thinking else False,
+            enable_thinking=thinking,
         )
         try:
             text, reasoning, timings = _stream_reply(srv.client, req, thinking)
