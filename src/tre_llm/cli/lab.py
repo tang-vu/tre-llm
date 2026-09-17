@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import typer
-
-from tre_llm.cli.util import console, die, emit_json
+from tre_llm.cli.util import console, emit_json
 
 
 def run_bench(quick: bool = False, model: str = "", json_mode: bool = False) -> None:

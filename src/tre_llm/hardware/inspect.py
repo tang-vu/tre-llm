@@ -12,8 +12,8 @@ import platform
 import re
 import shutil
 import subprocess
-import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
 import psutil
 
@@ -53,7 +53,7 @@ def _cpu_info(errors: list[str]) -> CpuInfo:
     system = platform.system()
     if system == "Linux":
         try:
-            text = open("/proc/cpuinfo", encoding="utf-8", errors="replace").read()
+            text = Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
             errors.append(f"cpuinfo: {exc}")
         else:
@@ -156,11 +156,11 @@ def _is_wsl() -> bool:
 
 
 def _in_container() -> bool:
-    if os.path.exists("/.dockerenv") or os.environ.get("container"):
+    if os.path.exists("/.dockerenv") or os.environ.get("container"):  # noqa: SIM112 — env var is lowercase by convention
         return True
     try:
         return any(
-            x in open("/proc/1/cgroup", encoding="utf-8", errors="replace").read()
+            x in Path("/proc/1/cgroup").read_text(encoding="utf-8", errors="replace")
             for x in ("docker", "kubepods", "containerd", "podman")
         )
     except OSError:
@@ -171,7 +171,7 @@ def _cgroup_ram_limit_mb() -> int | None:
     """Container memory limit, if any (None when unlimited)."""
     for path in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
         try:
-            raw = open(path, encoding="utf-8").read().strip()
+            raw = Path(path).read_text(encoding="utf-8").strip()
         except OSError:
             continue
         if raw and raw != "max":

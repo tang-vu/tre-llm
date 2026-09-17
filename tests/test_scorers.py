@@ -1,6 +1,5 @@
 """Tre Viet scorers: deterministic checks + rubric stays ungraded."""
 
-import json
 
 from tre_llm.evaluation.scorers import grade
 from tre_llm.schemas import EvalItem, EvalResult

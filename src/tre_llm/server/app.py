@@ -14,20 +14,19 @@ no telemetry, no external calls except user-initiated model downloads.
 from __future__ import annotations
 
 import json
-import queue
 import threading
 import uuid
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, ClassVar
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from tre_llm import paths
-from tre_llm.inference.client import ChatClient, GenerationResult
+from tre_llm.inference.client import ChatClient
 from tre_llm.runtimes.manager import RunningServer
 from tre_llm.schemas import GenerationRequest
 from tre_llm.storage.db import get_db
@@ -79,8 +78,8 @@ class AppState:
     server: RunningServer | None = None
     active_model: str = ""
     started_at: str = ""
-    gen_lock = threading.Lock()
-    current_cancel: list = []  # cancel callables of in-flight generations
+    gen_lock: ClassVar[threading.Lock] = threading.Lock()
+    current_cancel: ClassVar[list] = []  # cancel callables of in-flight generations
 
 
 state = AppState()

@@ -1,22 +1,18 @@
 """Store: verified downloads, resume, integrity failure, import."""
 
 import hashlib
-import threading
-from pathlib import Path
 
 import pytest
-from tre_llm import paths
+
 from tre_llm.registry.store import (
     Downloader,
     IntegrityError,
     StoreError,
-    hf_tree_sha256,
     import_local,
     installed,
     remove,
     sha256_file,
 )
-from tre_llm.schemas import ArtifactFile, ModelArtifact
 
 
 class FakeTransport:

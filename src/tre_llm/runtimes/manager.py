@@ -22,7 +22,6 @@ from tre_llm.runtimes.llamacpp import (
     LlamaCppProcess,
     RuntimeError_,
     find_binary,
-    probe_version,
 )
 from tre_llm.schemas import PlanChoice
 

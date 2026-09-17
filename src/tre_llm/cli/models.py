@@ -8,7 +8,6 @@ import typer
 from rich.progress import BarColumn, DownloadColumn, Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from tre_llm import paths
 from tre_llm.cli.util import console, die, emit_json
 from tre_llm.registry import catalog, get, import_local, installed, pull, remove
 from tre_llm.registry.store import Downloader
@@ -107,7 +106,7 @@ def pull_(
     except KeyboardInterrupt:
         dl.cancel()
         console.print("[yellow]Đã huỷ — file .part được giữ để resume lần sau.[/yellow]")
-        raise typer.Exit(130)
+        raise SystemExit(130) from None
     except Exception as exc:
         die(str(exc))
     console.print(f"[green]Xong.[/green] {inst_model.local_path}\n  sha256={inst_model.sha256_actual}")
@@ -115,7 +114,7 @@ def pull_(
 
 @app.command("import", help="Đăng ký file .gguf có sẵn (không copy mặc định).")
 def import_(
-    path: Path = typer.Argument(..., exists=True),
+    path: Path = typer.Argument(..., exists=True),  # noqa: B008 — typer idiom
     registry_id: str = typer.Option("", "--id", help="id tuỳ chọn"),
     move: bool = typer.Option(False, "--move", help="Chuyển file vào cache của Tre."),
 ) -> None:

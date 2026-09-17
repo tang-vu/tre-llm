@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import typer
 from rich.panel import Panel
 from rich.table import Table
 
@@ -38,9 +37,9 @@ def run(goal: str = "balanced", json_mode: bool = False) -> None:
             for c in plan.rejected:
                 t.add_row(c.artifact_id, c.rejection)
             console.print(t)
-        raise typer.Exit(2)
+        raise SystemExit(2)
 
-    console.print(Panel("\n".join(f"  {l}" for l in plan.explanation), title=f"[bold green]Kế hoạch đề xuất — {plan.chosen.artifact_id}[/bold green]", border_style="green"))
+    console.print(Panel("\n".join(f"  {ln}" for ln in plan.explanation), title=f"[bold green]Kế hoạch đề xuất — {plan.chosen.artifact_id}[/bold green]", border_style="green"))
 
     if plan.rejected:
         t = Table(title="Phương án khác / bị loại", show_lines=False)

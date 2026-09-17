@@ -12,6 +12,7 @@ Guarantees:
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -19,9 +20,9 @@ import shutil
 import tempfile
 import threading
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 import httpx
 
@@ -115,10 +116,8 @@ def _save_index(idx: dict[str, InstalledModel]) -> None:
             json.dump({k: v.model_dump(mode="json") for k, v in idx.items()}, f, indent=2)
         os.replace(tmp, p)
     except BaseException:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp)
-        except OSError:
-            pass
         raise
 
 
@@ -164,8 +163,7 @@ class Downloader:
         dest.parent.mkdir(parents=True, exist_ok=True)
         part = dest.with_suffix(dest.suffix + ".part")
 
-        if dest.is_file() and expected_sha256:
-            if sha256_file(dest) == expected_sha256:
+        if dest.is_file() and expected_sha256 and sha256_file(dest) == expected_sha256:
                 if on_progress:
                     on_progress(dest.stat().st_size, dest.stat().st_size)
                 return dest

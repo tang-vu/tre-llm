@@ -10,7 +10,6 @@ import json
 import threading
 import uuid
 from pathlib import Path
-from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -51,7 +50,7 @@ def documents_add(doc: DocIn):
         meta = add_document(f)
     except ValueError as exc:
         f.unlink(missing_ok=True)
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from exc
     return meta
 
 
@@ -167,7 +166,7 @@ def _run_bg(kind: str, fn) -> str:
         try:
             out = fn()
             _run_threads[run_id] = {"status": "done", "result": out}
-            db.finish_run(run_id, "done", report_path=str(out) if isinstance(out, (str, Path)) else "")
+            db.finish_run(run_id, "done", report_path=str(out) if isinstance(out, str | Path) else "")
         except Exception as exc:
             _run_threads[run_id] = {"status": "error", "error": str(exc)[:400]}
             db.finish_run(run_id, "error")

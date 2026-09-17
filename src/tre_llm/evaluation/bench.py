@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import statistics
-import time
 from datetime import UTC, datetime
 from pathlib import Path
 
 from tre_llm import paths
 from tre_llm.hardware import collect, fingerprint
-from tre_llm.planner.calibrate import PROMPT, SYSTEM, calib_fingerprint, load_cache, run_one, save_result
+from tre_llm.planner.calibrate import calib_fingerprint, run_one, save_result
 from tre_llm.registry import get, installed
 from tre_llm.runtimes.llamacpp import find_binary, probe_version
 from tre_llm.schemas import CalibrationResult, Evidence, PerformanceReport, Value
@@ -23,10 +22,7 @@ def run_bench(quick: bool = True, model_id: str = "") -> PerformanceReport:
     if binary is None:
         raise RuntimeError("Chưa có llama-server — chạy `tre setup`.")
     inst = installed()
-    if model_id:
-        ids = [model_id]
-    else:
-        ids = list(inst)[:3]
+    ids = [model_id] if model_id else list(inst)[:3]
     if not ids:
         raise RuntimeError("Chưa cài model nào — chạy `tre setup` hoặc `tre models pull`.")
 

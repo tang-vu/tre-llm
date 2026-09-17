@@ -9,7 +9,6 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
-import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any

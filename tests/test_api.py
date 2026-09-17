@@ -7,8 +7,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 from fastapi.testclient import TestClient
-from tre_llm.runtimes.manager import RunningServer
+
 from tre_llm.inference.client import ChatClient
+from tre_llm.runtimes.manager import RunningServer
 from tre_llm.schemas import PlanChoice
 from tre_llm.server.app import create_app
 

@@ -10,8 +10,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 from fastapi.testclient import TestClient
-from tre_llm.runtimes.manager import RunningServer
+
 from tre_llm.inference.client import ChatClient
+from tre_llm.runtimes.manager import RunningServer
 from tre_llm.schemas import PlanChoice
 from tre_llm.server.app import create_app, state
 
@@ -29,7 +30,7 @@ class FakeLlama(BaseHTTPRequestHandler):
         if self.path != "/v1/chat/completions":
             return self._json({"error": "not found"}, 404)
         n = int(self.headers.get("content-length", 0))
-        body = json.loads(self.rfile.read(n) or b"{}")
+        self.rfile.read(n)  # consume request body
         # Always stream back a short Vietnamese answer.
         self.send_response(200)
         self.send_header("content-type", "text/event-stream")
@@ -39,7 +40,7 @@ class FakeLlama(BaseHTTPRequestHandler):
                 "id": "c1", "object": "chat.completion.chunk",
                 "choices": [{"index": 0, "delta": {"content": tok}, "finish_reason": None}],
             }
-            self.wfile.write(f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n".encode("utf-8"))
+            self.wfile.write(f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n".encode())
             self.wfile.flush()
         done = {
             "id": "c1", "object": "chat.completion.chunk",

@@ -1,0 +1,26 @@
+# Tre Adapt recipe — tiny fixture cho pipeline test.
+# QUAN TRỌNG: recipe này chứng minh pipeline (prepare→validate→train→save),
+# KHÔNG phải recipe chất lượng. Dữ liệu là fixture viết tay ~16 dòng.
+name: tiny-vi-notes
+base_model: "Qwen/Qwen3-0.6B"   # HF id; đổi sang bản phù hợp GPU khi train thật
+seed: 42
+output_dir: "training-out/tiny-vi-notes"
+est_vram_gb: 4                  # ước lượng cho LoRA trên 0.6B fp16
+cpu_smoke_ok: true              # fixture này cho phép CPU pipeline smoke
+device: cpu                     # ép CPU — GTX 1060 chỉ còn ~500 MiB VRAM trống
+data:
+  manifest: "manifest.yaml"
+  prepared_file: "prepared.jsonl"
+  train_fraction: 0.85
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.05
+  targets: ["q_proj", "v_proj"]
+sft:
+  epochs: 1
+  batch_size: 1
+  grad_accum: 4
+  lr: 0.0002
+  max_length: 384
+  save_steps: 50

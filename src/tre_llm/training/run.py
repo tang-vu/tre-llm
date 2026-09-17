@@ -13,7 +13,7 @@ from pathlib import Path
 
 import yaml
 
-from tre_llm import config, paths
+from tre_llm import config
 
 
 def _load_recipe(recipe_path: str) -> tuple[dict, Path]:
@@ -51,15 +51,26 @@ def run_training(recipe_path: str) -> dict:
 
     data_file = recipe.get("data", {}).get("prepared_file")
     if not data_file or not (p.parent / data_file).is_file():
-        raise RuntimeError(f"Thiếu dữ liệu đã chuẩn bị: {data_file}")
-    rows = [json.loads(l) for l in (p.parent / data_file).read_text(encoding="utf-8").splitlines() if l.strip()]
+        raise RuntimeError(f"Thiếu dữ liệu đã chuẩn bị: {data_file} — chạy `tre train prepare` trước.")
+
+    from tre_llm.training.dataprep import validate
+
+    val = validate(p.parent / data_file)
+    if not val["ok"]:
+        raise RuntimeError("Dữ liệu không đạt validation:\n" + "\n".join(val["issues"]))
+    rows = [json.loads(line) for line in (p.parent / data_file).read_text(encoding="utf-8").splitlines() if line.strip()]
     train_frac = float(recipe.get("data", {}).get("train_fraction", 0.9))
     cut = max(1, int(len(rows) * train_frac))
     train_ds = Dataset.from_list(rows[:cut])
     eval_ds = Dataset.from_list(rows[cut:]) if rows[cut:] else None
 
+    # Device: recipe can force cpu (cuda.is_available() is true even with only
+    # a few hundred MiB free — not enough for weights).
+    force_cpu = recipe.get("device", "auto") == "cpu"
+    use_cuda = torch.cuda.is_available() and not force_cpu
+
     tok = AutoTokenizer.from_pretrained(base)
-    dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+    dtype = torch.float16 if use_cuda else torch.float32
     model = AutoModelForCausalLM.from_pretrained(base, dtype=dtype)
     model.config.use_cache = False
 
@@ -89,7 +100,7 @@ def run_training(recipe_path: str) -> dict:
         report_to=[],
         dataset_text_field=sft.get("text_field", "text"),
         max_time=max_minutes * 60,
-        use_cpu=not torch.cuda.is_available(),
+        use_cpu=not use_cuda,
     )
     trainer = SFTTrainer(model=model, args=args, train_dataset=train_ds, eval_dataset=eval_ds, processing_class=tok)
 
@@ -107,17 +118,17 @@ def run_training(recipe_path: str) -> dict:
         "train_rows": len(train_ds),
         "eval_rows": len(eval_ds) if eval_ds else 0,
         "minutes": round(minutes, 2),
-        "device": "cuda" if torch.cuda.is_available() else "cpu",
+        "device": "cuda" if use_cuda else "cpu",
         "train_loss": getattr(result, "training_loss", None),
         "seed": seed,
         "recipe": recipe_path,
         "ran_at": datetime.now(UTC).isoformat(),
-        "status": "pipeline-smoke" if not torch.cuda.is_available() else "pilot",
+        "status": "pipeline-smoke" if not use_cuda else "pilot",
     }
     (out_dir / "run-report.json").write_text(json.dumps(card, ensure_ascii=False, indent=2), encoding="utf-8")
     return {
         "ok": True,
         "summary": f"Train xong {minutes:.1f} phút trên {card['device']} — adapter tại {adapter_dir} "
-                   f"({'PILOT' if torch.cuda.is_available() else 'PIPELINE SMOKE — không phải cải thiện chất lượng'})",
+                   f"({'PILOT' if use_cuda else 'PIPELINE SMOKE — không phải cải thiện chất lượng'})",
         "report": card,
     }
