@@ -1,0 +1,156 @@
+# TreLLM curated model registry.
+# Every entry is a real upstream artifact. `evidence` distinguishes what we
+# actually tested from upstream-documented compatibility.
+schema_version: 1
+artifacts:
+  - id: qwen3.5-0.8b-q4_k_m
+    display_name: "Qwen3.5 0.8B (Q4_K_M)"
+    upstream_repo: "unsloth/Qwen3.5-0.8B-GGUF"
+    upstream_model: "Qwen/Qwen3.5-0.8B"
+    publisher: "Unsloth (quantized from Alibaba Qwen)"
+    revision: "main"
+    files:
+      - path: Qwen3.5-0.8B-Q4_K_M.gguf
+        size_bytes: 532517120
+        sha256: bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517
+    format: gguf
+    quantization: Q4_K_M
+    architecture: qwen3.5
+    arch_meta:
+      n_layers: 24
+      kv_heads: 2
+      head_dim: 256
+      full_attn_interval: 4
+      linear_key_dim: 128
+      linear_val_dim: 128
+      linear_kv_heads: 16
+      hybrid: true
+    params_billion: 0.8
+    context_length: 262144
+    license: apache-2.0
+    license_url: "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF"
+    source_url: "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF"
+    profile: tiny
+    tuned: instruct
+    evidence: measured
+    thinking_capable: true
+    min_ram_mb: 2048
+    vietnamese_notes: >
+      Đa ngôn ngữ 100+ gồm tiếng Việt; thinking mặc định bật — Tre truyền
+      enable_thinking=false mặc định. Đã test trên Xeon E5-2678 v3 (25 tok/s).
+
+  - id: qwen3.5-0.8b-q8_0
+    display_name: "Qwen3.5 0.8B (Q8_0)"
+    upstream_repo: "unsloth/Qwen3.5-0.8B-GGUF"
+    upstream_model: "Qwen/Qwen3.5-0.8B"
+    publisher: "Unsloth (quantized from Alibaba Qwen)"
+    revision: "main"
+    files:
+      - path: Qwen3.5-0.8B-Q8_0.gguf
+        size_bytes: 811843840
+        sha256: ""   # filled by store from HF tree API at pull time
+    format: gguf
+    quantization: Q8_0
+    architecture: qwen3.5
+    arch_meta:
+      n_layers: 24
+      kv_heads: 2
+      head_dim: 256
+      full_attn_interval: 4
+      linear_key_dim: 128
+      linear_val_dim: 128
+      linear_kv_heads: 16
+      hybrid: true
+    params_billion: 0.8
+    context_length: 262144
+    license: apache-2.0
+    source_url: "https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF"
+    profile: tiny
+    tuned: instruct
+    evidence: documented
+    thinking_capable: true
+    min_ram_mb: 2560
+
+  - id: qwen3-1.7b-q8_0
+    display_name: "Qwen3 1.7B (Q8_0)"
+    upstream_repo: "Qwen/Qwen3-1.7B-GGUF"
+    upstream_model: "Qwen/Qwen3-1.7B"
+    publisher: "Alibaba Qwen (official GGUF)"
+    revision: "main"
+    files:
+      - path: Qwen3-1.7B-Q8_0.gguf
+        size_bytes: 1834426016
+        sha256: "0765e15700b0f9aebe441b64af38978f083447471b9854e10a18c644740e1a6d"
+    format: gguf
+    quantization: Q8_0
+    architecture: qwen3
+    arch_meta:
+      n_layers: 28
+      kv_heads: 8
+      head_dim: 128
+      hybrid: false
+    params_billion: 1.7
+    context_length: 32768
+    license: apache-2.0
+    source_url: "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF"
+    profile: lite
+    tuned: instruct
+    evidence: documented
+    thinking_capable: true
+    min_ram_mb: 4096
+
+  - id: qwen3-4b-q4_k_m
+    display_name: "Qwen3 4B (Q4_K_M)"
+    upstream_repo: "Qwen/Qwen3-4B-GGUF"
+    upstream_model: "Qwen/Qwen3-4B"
+    publisher: "Alibaba Qwen (official GGUF)"
+    revision: "main"
+    files:
+      - path: Qwen3-4B-Q4_K_M.gguf
+        size_bytes: 2497280256
+        sha256: "9375c1fd02b321abc3f51b69ff7fcdd187af17f0d694c5b05000b54664292e17"
+    format: gguf
+    quantization: Q4_K_M
+    architecture: qwen3
+    arch_meta:
+      n_layers: 36
+      kv_heads: 8
+      head_dim: 128
+      hybrid: false
+    params_billion: 4.0
+    context_length: 32768
+    license: apache-2.0
+    source_url: "https://huggingface.co/Qwen/Qwen3-4B-GGUF"
+    profile: core
+    tuned: instruct
+    evidence: documented
+    thinking_capable: true
+    min_ram_mb: 6144
+
+  - id: qwen3-8b-q4_k_m
+    display_name: "Qwen3 8B (Q4_K_M)"
+    upstream_repo: "Qwen/Qwen3-8B-GGUF"
+    upstream_model: "Qwen/Qwen3-8B"
+    publisher: "Alibaba Qwen (official GGUF)"
+    revision: "main"
+    files:
+      - path: Qwen3-8B-Q4_K_M.gguf
+        size_bytes: 5027783488
+        sha256: "a56061d03bd2055a8236c8a80ec2440a550a53eaecf935fb2ddf37c93995667c"
+    format: gguf
+    quantization: Q4_K_M
+    architecture: qwen3
+    arch_meta:
+      n_layers: 36
+      kv_heads: 8
+      head_dim: 128
+      hybrid: false
+    params_billion: 8.0
+    context_length: 32768
+    license: apache-2.0
+    source_url: "https://huggingface.co/Qwen/Qwen3-8B-GGUF"
+    profile: pro
+    tuned: instruct
+    evidence: documented
+    thinking_capable: true
+    min_ram_mb: 12288

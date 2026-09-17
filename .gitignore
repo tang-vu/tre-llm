@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+uv.lock.bak
+
+# Node / web build
+node_modules/
+apps/web/dist/assets/
+
+# TreLLM local state
+configs/local.yaml
+*.gguf
+*.part
+training-out/
+*.log
+
+# OS/editor
+.DS_Store
+Thumbs.db
