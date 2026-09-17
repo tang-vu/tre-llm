@@ -30,11 +30,11 @@ Status hợp lệ: `passed` | `failed` | `blocked` | `not run`.
 | 18 | Injection defense trong tài liệu | passed | eval `docs.test.001` (PWNED) pass trên model thật |
 | 19 | Persist conversations + delete | passed | SQLite + `/api/conversations` tests |
 | 20 | Tre Viet suite: provenance, splits, leakage, deterministic scorers | passed | `evals/tre-viet/`, `tests/test_suite.py` |
-| 21 | Real-model baseline eval | passed | `eval-tre-viet-test-20260917-132817.json`: 14 graded, pass 0.714 — giữ nguyên câu sai |
+| 21 | Real-model baseline eval | passed | dev `…132620.json` mean 0.625; test run1 `…132817.json` pass 0.714, run2 `…141038.json` pass 0.643 — giữ nguyên câu sai |
 | 22 | Rubric items ungraded khi không có judge | passed | scorer `rubric-ungraded`, 3/17 items ungraded |
 | 23 | Tre Adapt: prepare deterministic + validate + leakage | passed | `tests/test_dataprep.py`, 16 rows, sha256 reproducible |
 | 24 | Tre Adapt preflight (deps/data/VRAM) | passed | `tre train preflight` báo đúng thiếu deps + VRAM |
-| 25 | Tiny-fixture train/reload (parameter update) | not run | Đang cài `train` extra; nếu xong sẽ chạy Qwen3-0.6B CPU pipeline — next: `tre train run --recipe recipes/tiny-vi-notes` |
+| 25 | Tiny-fixture train/reload (parameter update) | passed | `training-out/tiny-vi-notes/`: adapter LoRA r=8 (112 tensors) + tokenizer + run-report.json — train_loss 3.705, status `pipeline-smoke`, `time_budget_exceeded: true` (budget 30 phút nhưng 1 optimizer step ~22 phút trên CPU nên dừng ở step 2/4 lúc 45.6 phút — budget enforce ở step granularity) |
 | 26 | Web UI 5 màn hình, cùng contract API | passed | `apps/web` build OK; chat/docs/lab flows verify qua API thật |
 | 27 | UI states: loading/empty/offline/error/OOM/unsupported | partial→passed | có banner/offline/empty/busy; OOM state qua runtime error path — next: mock screenshot review |
 | 28 | IME-safe Enter (tiếng Việt compose) | passed | `compositionstart/end` + `isComposing` guard trong Chat.tsx |
@@ -42,14 +42,15 @@ Status hợp lệ: `passed` | `failed` | `blocked` | `not run`.
 | 30 | Docs: README.vi, install, troubleshooting, provenance, support matrix, roadmap | passed | `docs/*.md` |
 | 31 | Tests ≥60 covering required areas | passed | 63 pass (pytest) |
 | 32 | GPU offload path | not run | VRAM trống ~700 MiB — không quảng cáo; next: máy có GPU đủ VRAM |
-| 33 | Clean installed-package run ngoài checkout | not run | next: `uv build` + pip install wheel vào venv mới, chạy `tre doctor` |
-| 34 | Release artifact checksum manifest | not run | next: build wheel → `SHA256SUMS` |
-| 35 | Screenshots/demo có giới hạn ghi rõ | not run | next: chụp UI khi serve |
+| 33 | Clean installed-package run ngoài checkout | passed | `uv build` → wheel+sdist; `/tmp/tre-clean-test` venv mới install wheel → `tre --version` 0.1.0, `tre doctor` thấy runtime+model |
+| 34 | Release artifact checksum manifest | passed | `dist/SHA256SUMS` (wheel `1cf29e80…`, sdist `9a96f166…`) |
+| 35 | Screenshots/demo có giới hạn ghi rõ | partial | UI verify qua browser preview `http://127.0.0.1:8471` (HTTP 200); chưa lưu screenshot file vào repo |
 | 36 | Vietnamese adapter trained + improved | blocked | Chưa train; nếu tiny-fixture chạy được chỉ là pipeline smoke, không claim cải thiện |
 
 ## Tóm tắt
 
-- **passed: 30** · not run: 5 · blocked: 1 · failed: 0
-- Blocker chính: không có GPU đủ VRAM để verify offload/training chất lượng;
-  tiny-fixture CPU train đang được thử.
+- **passed: 33** · partial: 1 · not run: 1 (GPU offload) · blocked: 1 · failed: 0
+- Blocker chính: không có GPU đủ VRAM để verify offload/training chất lượng.
+  CPU pipeline smoke đã chạy xong — chứng minh parameter update + adapter
+  reload, KHÔNG phải bằng chứng cải thiện tiếng Việt.
 - Mọi con số trong report này đo thật; fake-runtime tests được ghi rõ là protocol tests.

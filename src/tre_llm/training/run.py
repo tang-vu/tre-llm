@@ -30,6 +30,27 @@ def _load_recipe(recipe_path: str) -> tuple[dict, Path]:
     return yaml.safe_load(p.read_text(encoding="utf-8")) or {}, p
 
 
+def _time_budget_callback(max_seconds: float):
+    """Callback dừng training khi vượt ngân sách phút — `max_time` đã bị xoá
+    khỏi TrainingArguments (transformers 4.57) nên bound bằng callback."""
+    from transformers import TrainerCallback
+
+    class TimeBudget(TrainerCallback):
+        def __init__(self) -> None:
+            self._t0: float | None = None
+            self.exceeded = False
+
+        def on_train_begin(self, args, state, control, **kw):
+            self._t0 = time.monotonic()
+
+        def on_step_end(self, args, state, control, **kw):
+            if self._t0 is not None and time.monotonic() - self._t0 > max_seconds:
+                self.exceeded = True
+                control.should_training_stop = True
+
+    return TimeBudget()
+
+
 def run_training(recipe_path: str) -> dict:
     from tre_llm.training.preflight import run_preflight
 
@@ -99,10 +120,17 @@ def run_training(recipe_path: str) -> dict:
         save_steps=int(sft.get("save_steps", 100)),
         report_to=[],
         dataset_text_field=sft.get("text_field", "text"),
-        max_time=max_minutes * 60,
         use_cpu=not use_cuda,
     )
-    trainer = SFTTrainer(model=model, args=args, train_dataset=train_ds, eval_dataset=eval_ds, processing_class=tok)
+    budget = _time_budget_callback(max_minutes * 60)
+    trainer = SFTTrainer(
+        model=model,
+        args=args,
+        train_dataset=train_ds,
+        eval_dataset=eval_ds,
+        processing_class=tok,
+        callbacks=[budget],
+    )
 
     t0 = time.monotonic()
     result = trainer.train()
@@ -123,6 +151,7 @@ def run_training(recipe_path: str) -> dict:
         "seed": seed,
         "recipe": recipe_path,
         "ran_at": datetime.now(UTC).isoformat(),
+        "time_budget_exceeded": budget.exceeded,
         "status": "pipeline-smoke" if not use_cuda else "pilot",
     }
     (out_dir / "run-report.json").write_text(json.dumps(card, ensure_ascii=False, indent=2), encoding="utf-8")
