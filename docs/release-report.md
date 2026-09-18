@@ -45,13 +45,14 @@ Status hợp lệ: `passed` | `failed` | `blocked` | `not run`.
 | 33 | Clean installed-package run ngoài checkout | passed | `uv build` → wheel+sdist; `/tmp/tre-clean-test` venv mới install wheel → `tre --version` 0.1.0, `tre doctor` thấy runtime+model |
 | 34 | Release artifact checksum manifest | passed | `dist/SHA256SUMS` (wheel `d3830138…`, sdist `14273b44…`) |
 | 35 | Screenshots/demo có giới hạn ghi rõ | partial | UI verify qua browser preview `http://127.0.0.1:8471` (HTTP 200); chưa lưu screenshot file vào repo |
-| 36 | Vietnamese adapter trained + improved | passed (smoke) | `tre-vi-0.6b-q4_k_m`: adapter LoRA r=8 merge vào Qwen3-0.6B → GGUF → eval dev 0.375→0.625 mean (n=5). Recipe thật `recipes/tre-vi-0.6b` (3,742 dòng, HF sources) sẵn sàng cho Kaggle T4 — `notebooks/train-tre-vi-kaggle.ipynb` |
+| 36 | Vietnamese adapter trained + improved | partial | `tre-vi-0.6b-q4_k_m`: adapter LoRA r=8 merge → GGUF chạy thật. Eval: dev n=5 cải thiện (0.375→0.625) nhưng **test n=14 không cải thiện** (mean 0.607→0.536, pass giữ 0.571, 1 câu fail bởi `forbidden`). Pipeline đúng, adapter 16 dòng là smoke — cải thiện thật chờ run `tre-vi-0.6b` (3,742 dòng) trên Kaggle |
 
 ## Tóm tắt
 
-- **passed: 34** · partial: 1 · not run: 1 (GPU offload) · failed: 0
+- **passed: 33** · partial: 2 · not run: 1 (GPU offload) · failed: 0
 - Blocker chính: không có GPU đủ VRAM để verify offload/training chất lượng.
   CPU pipeline smoke đã chạy xong + export GGUF + eval trước/sau — đó là
-  pipeline-smoke trên 16 dòng fixture, chưa phải run nghiêm túc. Recipe
-  `tre-vi-0.6b` (3,742 dòng sạch từ HF) chờ chạy trên Kaggle T4 miễn phí.
+  pipeline-smoke trên 16 dòng fixture; eval test cho thấy adapter KHÔNG cải
+  thiện (đúng như kỳ vọng của smoke test). Recipe `tre-vi-0.6b` (3,742 dòng
+  sạch từ HF) chờ chạy trên Kaggle T4 miễn phí.
 - Mọi con số trong report này đo thật; fake-runtime tests được ghi rõ là protocol tests.

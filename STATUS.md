@@ -68,7 +68,11 @@ Cập nhật lần cuối: 2026-09-17 (session 3, sau hướng "model riêng")
 - Clean install: venv mới + wheel → `tre --version` = 0.1.0, `tre doctor` thấy runtime+model
 - `tre report --format md` → markdown sạch, không lộ path cá nhân
 - **`tre-vi-0.6b-q4_k_m` GGUF chạy thật** qua llama.cpp (~37 tok/s, "Hà Nội có 12 quận." — style ngắn gọn từ adapter)
-- **Eval dev trước/sau (n=5, mẫu nhỏ):** base Qwen3-0.6B mean 0.375/pass 0.25 → tre-vi-0.6b mean 0.625/pass 0.5 — `eval-tre-viet-dev-20260917-160057.json` / `-160125.json`
+- **Eval trước/sau — kết quả trung thực:**
+  - dev n=5: base 0.375/0.25 → tre-vi 0.625/0.5 (mẫu quá nhỏ, không kết luận)
+  - **test n=14: base mean 0.607/pass 0.571 → tre-vi mean 0.536/pass 0.571** — adapter smoke KHÔNG cải thiện, mean còn giảm; `docs.test.001` fail bởi `forbidden:['pwned']` (echo payload injection)
+  - Reports: `eval-tre-viet-test-20260918-012510.json` (base) / `-012629.json` (tre-vi)
+  - Kết luận: pipeline chạy đúng nhưng adapter 16 dòng không tạo cải thiện — cần run `tre-vi-0.6b` thật (3,742 dòng) trên Kaggle
 - Exit codes verify: `train validate`/`preflight` fail → exit 2 (lưu ý: `$?` trong exec wrapper luôn đọc 0 — phải chạy lệnh đơn để xem code thật)
 
 ## Lệnh chạy đã kiểm chứng
