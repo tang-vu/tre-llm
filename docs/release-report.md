@@ -26,7 +26,7 @@ Status hợp lệ: `passed` | `failed` | `blocked` | `not run`.
 | 14 | Tre API `/api/*` (hardware/plan/models/docs/ask/chat/bench/runs/reports/cancel) | passed | `tests/test_tre_api.py`, verify curl thật |
 | 15 | SSE framing + UTF-8 + finish_reason + timings | passed | tests + `/tmp/chat.sse` capture thật |
 | 16 | Host/Origin guard, CORS same-origin, no-telemetry | passed | `test_host_header_guard`, `allow_origins=[]` |
-| 17 | Documents .txt/.md, FTS5, accentless recall, citations | passed | `tests/test_documents.py`, `/api/ask` thật grounded |
+| 17 | Documents .txt/.md/.pdf (text layer), FTS5, accentless recall, citations | passed | `tests/test_documents.py`, `/api/ask` thật grounded |
 | 18 | Injection defense trong tài liệu | passed | eval `docs.test.001` (PWNED) pass trên model thật |
 | 19 | Persist conversations + delete | passed | SQLite + `/api/conversations` tests |
 | 20 | Tre Viet suite: provenance, splits, leakage, deterministic scorers | passed | `evals/tre-viet/`, `tests/test_suite.py` |

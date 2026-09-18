@@ -12,7 +12,7 @@ humans ──┘   (importable)           └─ external OpenAI-compatible serv
                         ├─ registry/    curated artifacts, verified downloads, local import
                         ├─ runtimes/    versioned launch adapters (llama.cpp first)
                         ├─ inference/   HTTPX client: stream, cancel, tokens, health
-                        ├─ documents/   ingest .txt/.md, FTS5 index, citations
+                        ├─ documents/   ingest .txt/.md/.pdf, FTS5 index, citations
                         ├─ evaluation/  Tre Viet suites, deterministic+ rubric scorers, reports
                         ├─ training/    data prep, SFT/LoRA pilot, export (optional deps)
                         ├─ server/      FastAPI app: /v1/* + /api/* + static UI
