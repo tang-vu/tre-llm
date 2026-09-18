@@ -1,6 +1,7 @@
 """Document ingestion, FTS5 indexing, retrieval, and grounded answering.
 
-Only user-selected .txt/.md files are indexed — never a home directory sweep.
+Only user-selected .txt/.md/.pdf files are indexed — never a home directory sweep.
+PDF support is text-layer extraction (pypdf); scanned PDFs need OCR — not yet.
 Citations must resolve to real stored chunks; hallucinated ids are rejected.
 """
 
@@ -21,7 +22,29 @@ MAX_FILE_BYTES = 4 * 1024 * 1024
 MAX_DOC_CHARS = 400_000
 CHUNK_CHARS = 900
 CHUNK_OVERLAP = 120
-SUPPORTED = {".txt", ".md", ".markdown"}
+SUPPORTED = {".txt", ".md", ".markdown", ".pdf"}
+
+
+def _extract_text(path: Path) -> str:
+    """Plain-text read for text formats; pypdf text-layer for .pdf."""
+    if path.suffix.lower() != ".pdf":
+        return path.read_text(encoding="utf-8", errors="replace")
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise ValueError("PDF cần gói pypdf — `pip install tre-llm` mới nhất đã kèm.") from exc
+    try:
+        reader = PdfReader(str(path))
+        pages = [(page.extract_text() or "").strip() for page in reader.pages]
+    except Exception as exc:
+        raise ValueError(f"Không đọc được PDF: {exc}") from exc
+    if not any(pages):
+        raise ValueError(
+            "PDF không có text layer (ảnh scan) — OCR chưa hỗ trợ trong v0.1."
+        )
+    return "".join(
+        f"\n\n[trang {i}]\n{p}" for i, p in enumerate(pages, 1) if p
+    )
 
 
 def _norm(text: str) -> str:
@@ -58,11 +81,11 @@ def add_document(path: Path, db: DB | None = None) -> dict[str, Any]:
     db = db or get_db()
     path = path.expanduser().resolve()
     if path.suffix.lower() not in SUPPORTED:
-        raise ValueError(f"Chỉ hỗ trợ {sorted(SUPPORTED)} trong v0.1 (PDF OCR: chưa).")
+        raise ValueError(f"Chỉ hỗ trợ {sorted(SUPPORTED)} trong v0.1 (PDF scan/OCR: chưa).")
     size = path.stat().st_size
     if size > MAX_FILE_BYTES:
         raise ValueError(f"File quá lớn ({size / 2**20:.1f} MiB > {MAX_FILE_BYTES / 2**20:.0f} MiB).")
-    text = path.read_text(encoding="utf-8", errors="replace")
+    text = _extract_text(path)
     if not text.strip():
         raise ValueError("File rỗng hoặc không đọc được text.")
     text = text[:MAX_DOC_CHARS]

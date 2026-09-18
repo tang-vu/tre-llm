@@ -89,3 +89,50 @@ def test_unanswerable_when_no_hits(tmp_path):
     out = answer_question(FakeClient(), "Giá vàng hôm nay?", "m")
     assert not out["grounded"]
     assert "không chứa thông tin" in out["answer"]
+
+
+def _minimal_pdf(text: str) -> bytes:
+    """Smallest valid one-page PDF with a Helvetica text object (ASCII)."""
+    stream = f"BT /F1 24 Tf 72 720 Td ({text}) Tj ET".encode()
+    objs = [
+        b"<</Type/Catalog/Pages 2 0 R>>",
+        b"<</Type/Pages/Kids[3 0 R]/Count 1>>",
+        b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]"
+        b"/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>",
+        b"<</Length " + str(len(stream)).encode() + b">>\nstream\n" + stream + b"\nendstream",
+        b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+    ]
+    out = b"%PDF-1.4\n"
+    offsets = []
+    for i, body in enumerate(objs, 1):
+        offsets.append(len(out))
+        out += f"{i} 0 obj\n".encode() + body + b"\nendobj\n"
+    xref_pos = len(out)
+    n = len(objs) + 1
+    out += f"xref\n0 {n}\n0000000000 65535 f \n".encode()
+    for off in offsets:
+        out += f"{off:010d} 00000 n \n".encode()
+    out += f"trailer\n<</Size {n}/Root 1 0 R>>\nstartxref\n{xref_pos}\n%%EOF".encode()
+    return out
+
+
+def test_pdf_ingest_and_search(tmp_path):
+    pdf = tmp_path / "ghi-chu.pdf"
+    pdf.write_bytes(_minimal_pdf("Ha Noi la thu do cua Viet Nam"))
+    meta = add_document(pdf)
+    assert meta["chunks"] >= 1
+    hits = search("thu do", k=3)
+    assert hits and "Ha Noi" in hits[0]["text"]
+
+
+def test_pdf_without_text_layer_rejected(tmp_path):
+    pytest.importorskip("pypdf")
+    from pypdf import PdfWriter
+
+    f = tmp_path / "scan.pdf"
+    w = PdfWriter()
+    w.add_blank_page(width=300, height=300)
+    with open(f, "wb") as fh:
+        w.write(fh)
+    with pytest.raises(ValueError, match=r"text layer|OCR"):
+        add_document(f)

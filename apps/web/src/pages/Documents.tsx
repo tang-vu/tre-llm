@@ -16,17 +16,23 @@ export default function DocsPage() {
 
   const addFile = async (f: File) => {
     setErr("");
-    if (!/\.(txt|md|markdown)$/i.test(f.name)) {
-      setErr(`Chỉ hỗ trợ .txt/.md — "${f.name}" không hợp lệ.`);
+    if (!/\.(txt|md|markdown|pdf)$/i.test(f.name)) {
+      setErr(`Chỉ hỗ trợ .txt/.md/.pdf — "${f.name}" không hợp lệ.`);
       return;
     }
-    if (f.size > 2 * 1024 * 1024) {
-      setErr(`"${f.name}" quá lớn (giới hạn 2 MiB).`);
+    if (f.size > 4 * 1024 * 1024) {
+      setErr(`"${f.name}" quá lớn (giới hạn 4 MiB).`);
       return;
     }
-    const text = await f.text();
     try {
-      await api.addDocument(f.name, text);
+      if (/\.pdf$/i.test(f.name)) {
+        const buf = await f.arrayBuffer();
+        let bin = "";
+        new Uint8Array(buf).forEach((b) => { bin += String.fromCharCode(b); });
+        await api.addDocument(f.name, "", btoa(bin));
+      } else {
+        await api.addDocument(f.name, await f.text());
+      }
       refresh();
     } catch (e) { setErr(String(e)); }
   };
@@ -50,8 +56,9 @@ export default function DocsPage() {
     <div>
       <h1>Tài liệu</h1>
       <p className="sub">
-        Chỉ file bạn chọn được index — không quét thư mục ngầm. Hỗ trợ .txt/.md UTF-8,
-        tìm kiếm không cần dấu, trả lời kèm trích dẫn.
+        Chỉ file bạn chọn được index — không quét thư mục ngầm. Hỗ trợ .txt/.md UTF-8
+        và .pdf có text layer (PDF scan cần OCR — chưa hỗ trợ). Tìm kiếm không cần dấu,
+        trả lời kèm trích dẫn.
       </p>
 
       <div
@@ -66,9 +73,9 @@ export default function DocsPage() {
       >
         <div className="row">
           <label className="primary" style={{ padding: "7px 14px", borderRadius: 8, background: "var(--accent)", color: "#fff", cursor: "pointer", fontWeight: 500 }}>
-            Chọn file .txt/.md
+            Chọn file .txt/.md/.pdf
             <input
-              type="file" multiple accept=".txt,.md,.markdown" style={{ display: "none" }}
+              type="file" multiple accept=".txt,.md,.markdown,.pdf" style={{ display: "none" }}
               onChange={(e) => Array.from(e.target.files ?? []).forEach((f) => void addFile(f))}
             />
           </label>

@@ -30,6 +30,7 @@ dependencies = [
     "pyyaml>=6.0,<7",
     "platformdirs>=4.2,<5",
     "psutil>=5.9,<8",
+    "pypdf>=5.0,<7",
 ]
 
 [project.optional-dependencies]

@@ -64,7 +64,7 @@ export const api = {
   selectModel: (id: string) => fetch("/api/models/select", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model_id: id }) }).then(r => j(r)),
   deleteModel: (id: string) => fetch(`/api/models/${id}`, { method: "DELETE" }).then(r => j(r)),
   documents: () => fetch("/api/documents").then(r => j<{ documents: DocEntry[] }>(r)),
-  addDocument: (name: string, content: string) => fetch("/api/documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, content }) }).then(r => j(r)),
+  addDocument: (name: string, content: string, contentBase64?: string) => fetch("/api/documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(contentBase64 ? { name, content_base64: contentBase64 } : { name, content }) }).then(r => j(r)),
   deleteDocument: (id: string) => fetch(`/api/documents/${id}`, { method: "DELETE" }).then(r => j(r)),
   docChunks: (id: string) => fetch(`/api/documents/${id}`).then(r => j(r)),
   ask: (question: string, k = 4) => fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question, k }) }).then(r => j<AskResp>(r)),

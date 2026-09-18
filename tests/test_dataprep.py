@@ -99,7 +99,7 @@ def test_manifest_requires_path_xor_hf(tmp_path):
         "    provenance: test\n",
         encoding="utf-8",
     )
-    with pytest.raises(ValueError, match="path.*hf|hf.*path"):
+    with pytest.raises(ValueError, match=r"path.*hf|hf.*path"):
         load_manifest(tmp_path, "m.yaml")
 
 

@@ -25,7 +25,8 @@ router = APIRouter(prefix="/api")
 
 class DocIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    content: str = Field(min_length=1, max_length=4_000_000)
+    content: str = Field(default="", max_length=4_000_000)
+    content_base64: str = Field(default="", max_length=6_000_000)
 
 
 @router.get("/documents")
@@ -38,14 +39,26 @@ def documents_list():
 @router.post("/documents")
 def documents_add(doc: DocIn):
     """Import document content sent by the UI (file picked client-side)."""
+    import base64
+    import binascii
+
     from tre_llm.documents.service import add_document
 
     paths.documents_dir().mkdir(parents=True, exist_ok=True)
     safe = Path(doc.name).name
-    if not safe.lower().endswith((".txt", ".md", ".markdown")):
-        raise HTTPException(400, "v0.1 hỗ trợ .txt/.md — PDF cần OCR (chưa hỗ trợ).")
+    ext = Path(safe).suffix.lower()
+    if ext not in (".txt", ".md", ".markdown", ".pdf"):
+        raise HTTPException(400, "v0.1 hỗ trợ .txt/.md/.pdf — PDF scan cần OCR (chưa hỗ trợ).")
     f = paths.documents_dir() / f"{uuid.uuid4().hex[:8]}-{safe}"
-    f.write_text(doc.content, encoding="utf-8")
+    if doc.content_base64:
+        try:
+            f.write_bytes(base64.b64decode(doc.content_base64, validate=True))
+        except (binascii.Error, ValueError) as exc:
+            raise HTTPException(400, "content_base64 không hợp lệ.") from exc
+    elif doc.content:
+        f.write_text(doc.content, encoding="utf-8")
+    else:
+        raise HTTPException(400, "Thiếu content hoặc content_base64.")
     try:
         meta = add_document(f)
     except ValueError as exc:
