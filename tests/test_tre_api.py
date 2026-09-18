@@ -215,6 +215,28 @@ def test_chat_requires_runtime():
     assert r.status_code == 503
 
 
+def test_document_upload_pdf_base64(client):
+    """POST /api/documents accepts PDF bytes via content_base64."""
+    import base64
+
+    from tests.test_documents import _minimal_pdf
+
+    payload = base64.b64encode(_minimal_pdf("Da Nang la thanh pho mien Trung")).decode()
+    r = client.post("/api/documents", json={
+        "name": "danang.pdf", "content_base64": payload,
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["chunks"] >= 1
+    # and it is searchable through the normal path
+    r2 = client.post("/api/ask", json={"question": "Da Nang o dau", "k": 3})
+    assert r2.status_code == 200
+
+    bad = client.post("/api/documents", json={
+        "name": "x.pdf", "content_base64": "!!!not-base64!!!",
+    })
+    assert bad.status_code == 400
+
+
 def test_models_select_hot_swap(client, monkeypatch, tmp_path):
     """Select on a managed runtime stops old proc and starts the new model."""
     from tre_llm.registry.store import register
