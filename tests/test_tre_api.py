@@ -213,3 +213,51 @@ def test_chat_requires_runtime():
     c = TestClient(app, base_url="http://127.0.0.1")
     r = c.post("/api/chat", json={"message": "hi"})
     assert r.status_code == 503
+
+
+def test_models_select_hot_swap(client, monkeypatch, tmp_path):
+    """Select on a managed runtime stops old proc and starts the new model."""
+    from tre_llm.registry.store import register
+    from tre_llm.runtimes import manager
+    from tre_llm.schemas import InstalledModel
+
+    # Two fake installed models: current active + target.
+    for mid in ("fake-model", "new-model"):
+        register(InstalledModel(
+            registry_id=mid, artifact=None,
+            local_path=str(tmp_path / f"{mid}.gguf"), sha256_actual="x",
+            installed_at="2026-01-01T00:00:00+00:00", source="imported",
+        ))
+
+    class _Proc:
+        def __init__(self):
+            self.stopped = False
+
+        def stop(self):
+            self.stopped = True
+
+    old_proc = _Proc()
+    assert state.server is not None
+    state.server.process = old_proc  # pretend managed (not attached)
+
+    started: list[str] = []
+
+    def fake_start(rid, path, **kw):
+        started.append(rid)
+        return RunningServer(
+            client=state.server.client if state.server else ChatClient("http://127.0.0.1:1"),
+            process=_Proc(), base_url="http://127.0.0.1:1",
+            effective=PlanChoice(artifact_id=rid), adjustments=[],
+        )
+
+    monkeypatch.setattr(manager, "start_for_model", fake_start)
+    try:
+        r = client.post("/api/models/select", json={"model_id": "new-model"})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["applied"] is True and body["active"] == "new-model"
+        assert old_proc.stopped is True
+        assert started == ["new-model"]
+        assert state.active_model == "new-model"
+    finally:
+        state.active_model = "fake-model"

@@ -109,6 +109,29 @@ def start_managed(
             time.sleep(0.5)
 
 
+def start_for_model(
+    registry_id: str,
+    model_path,
+    ctx_override: int = 0,
+    on_adjust=None,
+    ready_timeout: float = 120.0,
+) -> RunningServer:
+    """Start a managed server for an explicit installed model — non-CLI helper
+    shared by `tre serve` hot-swap and tests (no planner, no die())."""
+    from tre_llm import config
+    from tre_llm.hardware import collect
+    from tre_llm.planner.select import _default_threads
+
+    choice = PlanChoice(artifact_id=registry_id)
+    if ctx_override:
+        choice.ctx_size = ctx_override
+    if not choice.threads:
+        choice.threads = _default_threads(collect())
+    if not choice.ctx_size:
+        choice.ctx_size = int(config.get("defaults", "ctx_size", default=4096))
+    return start_managed(choice, model_path, on_adjust=on_adjust, ready_timeout=ready_timeout)
+
+
 def attach(base_url: str, api_key: str | None = None, timeout: float = 600.0) -> RunningServer:
     """Attach to an explicitly configured external OpenAI-compatible server."""
     client = ChatClient(base_url, timeout=timeout, api_key=api_key)
