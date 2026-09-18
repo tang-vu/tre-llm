@@ -101,9 +101,10 @@ cd apps/web && npm install && npm run build
 - GTX 1060 3GB: VRAM trống ~440 MiB → GPU path "not run", không quảng cáo.
 - Process nền qua exec `&` bị kill khi shell đóng → spawn train/eval phải qua exec timeout=0.
 - ~~`/api/models/select` cần restart~~ → đã hot-swap (session 3); với runtime attach external vẫn cần restart.
-- PDF/OCR chưa hỗ trợ (v0.1 chỉ .txt/.md/.markdown).
 - ~~Rubric items cần judge~~ → `--judge` đã implement (model khác chấm, ghi provenance); judge bằng model nhỏ vẫn là tín hiệu yếu, không thay chấm tay.
+- ~~PDF/OCR chưa hỗ trợ~~ → PDF text-layer OK (pypdf); PDF scan/OCR vẫn chưa.
 - Suite nhỏ (22 items) — phát hiện regression thô, không phải thang đo chất lượng tuyệt đối.
+- **Môi trường không ổn định:** exec session đôi khi là `testrunner` (không quyền /root, venv, binfmt) thay vì root → `uv sync`, `tre`, push Windows-git đôi khi không chạy được. Test vẫn chạy được qua `/tmp/tv` venv (python3.14 + PYTHONPATH=src). Push cần Windows-side (`git push` trong PowerShell) hoặc shell root.
 
 ## Việc tiếp theo
 

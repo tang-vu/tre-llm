@@ -36,9 +36,9 @@ từ thiết kế — chưa kiểm chứng thì ghi rõ.
 | Tính năng | Trạng thái |
 |-----------|-----------|
 | Chat streaming SSE, persist SQLite | verified |
-| Hỏi đáp tài liệu .txt/.md + trích dẫn | verified (cả query không dấu) |
+| Hỏi đáp tài liệu .txt/.md/.pdf + trích dẫn | verified (cả query không dấu; PDF = text layer) |
 | Eval suite dev/test + report | verified trên Qwen3.5-0.8B |
 | `tre train prepare/validate/preflight` | verified |
 | `tre train run` (LoRA) | pipeline-test only — cần `train` extra; chưa chạy run thật |
 | GPU offload | not run — không quảng cáo |
-| PDF OCR | blocked — chưa hỗ trợ, báo rõ trong API/UI |
+| PDF scan (không text layer) / OCR | blocked — báo rõ trong API/UI |
