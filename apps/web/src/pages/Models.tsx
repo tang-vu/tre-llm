@@ -14,8 +14,16 @@ export default function ModelsPage() {
   const select = async (id: string) => {
     setErr(""); setMsg("");
     try {
-      const r = (await api.selectModel(id)) as { note?: string };
-      setMsg(`Đã chọn ${id}. ${r.note ?? ""}`);
+      const r = (await api.selectModel(id)) as {
+        applied?: boolean; note?: string; adjustments?: string[];
+      };
+      const adj = r.adjustments?.length ? ` Phục hồi: ${r.adjustments.join("; ")}` : "";
+      setMsg(
+        r.applied === false
+          ? `Đã lưu ${id}. ${r.note ?? ""}`
+          : `Đang chạy ${id} (đổi nóng, không cần restart).${adj}${r.note ? " " + r.note : ""}`,
+      );
+      refresh();
     }
     catch (e) { setErr(String(e)); }
   };

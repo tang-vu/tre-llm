@@ -74,6 +74,7 @@ Cập nhật lần cuối: 2026-09-17 (session 3, sau hướng "model riêng")
   - Reports: `eval-tre-viet-test-20260918-012510.json` (base) / `-012629.json` (tre-vi)
   - Kết luận: pipeline chạy đúng nhưng adapter 16 dòng không tạo cải thiện — cần run `tre-vi-0.6b` thật (3,742 dòng) trên Kaggle
 - Exit codes verify: `train validate`/`preflight` fail → exit 2 (lưu ý: `$?` trong exec wrapper luôn đọc 0 — phải chạy lệnh đơn để xem code thật)
+- **Hot-swap model không cần restart:** `POST /api/models/select` stop llama-server cũ → start model mới (rollback nếu lỗi, 409 nếu đang gen). Verify thật: qwen3.5-0.8b → tre-vi-0.6b → chat trả lời được → swap về. `{applied:true}`
 
 ## Lệnh chạy đã kiểm chứng
 
@@ -98,7 +99,7 @@ cd apps/web && npm install && npm run build
 
 - GTX 1060 3GB: VRAM trống ~440 MiB → GPU path "not run", không quảng cáo.
 - Process nền qua exec `&` bị kill khi shell đóng → spawn train/eval phải qua exec timeout=0.
-- `/api/models/select` cần restart server để đổi model active.
+- ~~`/api/models/select` cần restart~~ → đã hot-swap (session 3); với runtime attach external vẫn cần restart.
 - PDF/OCR chưa hỗ trợ (v0.1 chỉ .txt/.md/.markdown).
 - Rubric items cần judge model hoặc chấm tay.
 - Suite nhỏ (22 items) — phát hiện regression thô, không phải thang đo chất lượng tuyệt đối.

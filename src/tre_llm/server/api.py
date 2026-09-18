@@ -133,12 +133,55 @@ class SelectIn(BaseModel):
 
 @router.post("/models/select")
 def models_select(body: SelectIn):
-    from tre_llm.registry import installed
+    from pathlib import Path
 
-    if body.model_id not in installed():
+    from tre_llm.registry import installed
+    from tre_llm.runtimes import manager
+    from tre_llm.server.app import state
+
+    inst = installed()
+    if body.model_id not in inst:
         raise HTTPException(404, "Model chưa cài")
     get_db().set_setting("active_model", body.model_id)
-    return {"active": body.model_id, "note": "áp dụng khi khởi động lại `tre serve`"}
+
+    if state.server is not None and state.server.process is None:
+        return {
+            "active": body.model_id,
+            "applied": False,
+            "note": "Runtime external (attach) — đổi model cần restart `tre serve`.",
+        }
+    if state.active_model == body.model_id and state.server is not None:
+        return {"active": body.model_id, "applied": True, "note": "đã là model đang chạy"}
+
+    if not state.gen_lock.acquire(blocking=False):
+        raise HTTPException(409, "Đang có yêu cầu chạy — thử lại sau vài giây.")
+    try:
+        old_model = state.active_model
+        old_path = inst[old_model].local_path if old_model in inst else ""
+        if state.server is not None:
+            state.server.stop()
+            state.server = None
+        try:
+            srv = manager.start_for_model(body.model_id, Path(inst[body.model_id].local_path))
+        except Exception as exc:
+            note = f"Không đổi được model: {exc}"
+            if old_model and old_path:
+                try:
+                    state.server = manager.start_for_model(old_model, Path(old_path))
+                    state.active_model = old_model
+                    note += " — đã khôi phục model cũ."
+                except Exception:
+                    note += " — không khôi phục được model cũ; restart `tre serve`."
+            raise HTTPException(502, note) from exc
+        state.server = srv
+        state.active_model = srv.effective.artifact_id
+        return {
+            "active": state.active_model,
+            "applied": True,
+            "adjustments": srv.adjustments,
+        }
+    finally:
+        state.gen_lock.release()
 
 
 @router.delete("/models/{model_id}")
