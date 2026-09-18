@@ -38,6 +38,7 @@ Cập nhật lần cuối: 2026-09-17 (session 3, sau hướng "model riêng")
 - Test run 2 (14:10): 14 graded, mean 0.679, pass 0.643 — `eval-tre-viet-test-20260917-141038.json`
 - Variance giữa 2 test run là thật (sampling). docs 5/5 pass; qna/extract có câu sai giữ nguyên; notes 3 câu rubric ungraded (cần judge)
 - Scorer `forbid` mới: câu bị cấm (PWNED injection, refusal) ép fail trên mọi grader
+- **LLM judge (session 3):** `tre eval --judge <model-id>` — model khác chấm rubric items, parse score 0/1/2 (fallback regex `"score":N` khi JSON cụt đuôi), grader ghi `judge:<id>`, provenance có `judge_same_as_subject`. Verify thật: qwen3.5-0.8b chấm tre-vi-0.6b dev → notes.dev.001 được 2/2, 0 ungraded
 - Reports trong `/root/.local/share/tre-llm/eval-results/`
 
 ## Tre Adapt — trạng thái
@@ -101,7 +102,7 @@ cd apps/web && npm install && npm run build
 - Process nền qua exec `&` bị kill khi shell đóng → spawn train/eval phải qua exec timeout=0.
 - ~~`/api/models/select` cần restart~~ → đã hot-swap (session 3); với runtime attach external vẫn cần restart.
 - PDF/OCR chưa hỗ trợ (v0.1 chỉ .txt/.md/.markdown).
-- Rubric items cần judge model hoặc chấm tay.
+- ~~Rubric items cần judge~~ → `--judge` đã implement (model khác chấm, ghi provenance); judge bằng model nhỏ vẫn là tín hiệu yếu, không thay chấm tay.
 - Suite nhỏ (22 items) — phát hiện regression thô, không phải thang đo chất lượng tuyệt đối.
 
 ## Việc tiếp theo

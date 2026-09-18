@@ -54,6 +54,8 @@ tre report --format md  # xuất báo cáo từ các lần đo
 ```bash
 tre eval --suite tre-viet --split dev      # 5 câu, iterate nhanh
 tre eval --suite tre-viet --split test     # 17 câu held-out, chậm trên CPU
+# rubric items: thêm --judge <model-id> để model khác chấm (đổi grader thành judge:<id>)
+tre eval --split dev --model tre-vi-0.6b-q4_k_m --judge qwen3.5-0.8b-q4_k_m
 tre report --format html                   # tổng hợp mọi kết quả đo
 ```
 

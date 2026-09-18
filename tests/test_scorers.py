@@ -67,3 +67,57 @@ def test_citation_unanswerable_expected():
         res("Tài liệu không có thông tin này."),
     )
     assert r.passed
+
+
+class _FakeJudge:
+    def __init__(self, text):
+        self._text = text
+
+    def generate(self, req):
+        from tre_llm.inference.client import GenerationResult
+
+        return GenerationResult(text=self._text)
+
+
+def test_rubric_graded_by_judge():
+    judge = _FakeJudge('{"score": 2, "nhan_xet": "đủ ý, mạch lạc"}')
+    r = grade(
+        item("rubric", grading={"kind": "rubric", "rubric": "mạch lạc"}),
+        res("văn hay"),
+        judge_client=judge, judge_model="judge-model",
+    )
+    assert r.score == 1.0 and r.passed
+    assert r.grader == "judge:judge-model"
+    assert "đủ ý" in r.detail
+
+
+def test_rubric_judge_partial_score():
+    judge = _FakeJudge('{"score": 1}')
+    r = grade(
+        item("rubric", grading={"kind": "rubric", "rubric": "x"}),
+        res("ok"),
+        judge_client=judge, judge_model="j",
+    )
+    assert r.score == 0.5 and r.passed  # 1/2 = đạt một phần vẫn tính pass
+
+
+def test_rubric_judge_bad_output_falls_back_ungraded():
+    judge = _FakeJudge("không phải JSON")
+    r = grade(
+        item("rubric", grading={"kind": "rubric", "rubric": "x"}),
+        res("ok"),
+        judge_client=judge, judge_model="j",
+    )
+    assert r.score is None and r.grader == "rubric-ungraded"
+    assert "parse" in r.detail
+
+
+def test_rubric_judge_truncated_json_still_scored():
+    # Model nhỏ hay viết nhan_xet dài → JSON cụt đuôi, nhưng "score" vẫn bắt được
+    judge = _FakeJudge('{"score": 2, "nhan_xet": "Quang hợp là quá trình dài...')
+    r = grade(
+        item("rubric", grading={"kind": "rubric", "rubric": "x"}),
+        res("ok"),
+        judge_client=judge, judge_model="j",
+    )
+    assert r.score == 1.0 and r.passed and r.grader == "judge:j"

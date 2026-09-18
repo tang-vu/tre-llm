@@ -59,6 +59,23 @@ def run_suite(
         raise RuntimeError(f"Suite {suite} split {split} trống.")
 
     srv = start_runtime(model_id=model_id)
+    judge_srv = None
+    judge_client = None
+    judge_model = ""
+    if judge:
+        if judge == srv.effective.artifact_id:
+            # same weights judging itself — allowed but disclosed in provenance
+            judge_client, judge_model = srv.client, judge
+        else:
+            from tre_llm.registry import installed as _inst
+            from tre_llm.runtimes import manager
+
+            inst = _inst()
+            if judge not in inst:
+                srv.stop()
+                raise RuntimeError(f"Judge '{judge}' chưa cài. `tre models list`.")
+            judge_srv = manager.start_for_model(judge, Path(inst[judge].local_path))
+            judge_client, judge_model = judge_srv.client, judge
     hw = collect()
     rep = EvaluationReport(
         suite=suite,
@@ -67,7 +84,11 @@ def run_suite(
         runtime_build="",
         hardware_fingerprint=fingerprint(hw),
         started_at=datetime.now(UTC).isoformat(),
-        provenance={"judge": judge or None, "grader_note": "deterministic + rubric"},
+        provenance={
+            "judge": judge_model or None,
+            "judge_same_as_subject": bool(judge_model and judge_model == srv.effective.artifact_id),
+            "grader_note": "deterministic + judge cho rubric" if judge_client else "deterministic; rubric ungraded",
+        },
     )
     try:
         for item in items:
@@ -91,10 +112,12 @@ def run_suite(
             except Exception as exc:
                 res.error = str(exc)[:300]
             if not res.error:
-                rep.results.append(grade(item, res))
+                rep.results.append(grade(item, res, judge_client=judge_client, judge_model=judge_model))
             else:
                 rep.results.append(res)
     finally:
+        if judge_srv is not None:
+            judge_srv.stop()
         srv.stop()
     rep.finished_at = datetime.now(UTC).isoformat()
 
