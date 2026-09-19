@@ -13,7 +13,7 @@ uv.lock.bak
 # Node / web build
 node_modules/
 *.tsbuildinfo
-# apps/web/dist/ ĐƯỢC track: wheel ship sẵn UI đã build, sdist cần dist để rebuild wheel.
+# apps/web/dist/ ÄÆ¯á»¢C track: wheel ship sáºµn UI Ä‘Ã£ build, sdist cáº§n dist Ä‘á»ƒ rebuild wheel.
 
 # TreLLM local state
 configs/local.yaml
@@ -27,3 +27,9 @@ prepared.stats.json
 # OS/editor
 .DS_Store
 Thumbs.db
+
+# AI assistant artifacts
+.devin/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+NUL
