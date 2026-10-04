@@ -29,10 +29,15 @@ Không build UI thì `tre serve` vẫn chạy API, trang `/` hiện thông báo 
 ## Cài từ wheel
 
 ```bash
-uv build                                 # wheel gồm UI đã build + registry + evals
+uv build                                 # wheel gồm UI đã build + registry + evals + cấu hình mặc định
 pip install dist/tre_llm-*.whl
 tre setup && tre serve
 ```
+
+CI cài wheel vào môi trường mới và chạy `tests/wheel_smoke.py` ngoài checkout:
+kiểm tra cấu hình mặc định, registry, UI và ingest/search/delete tài liệu Markdown/PDF.
+Smoke test này chạy offline, không tải runtime/model và không đo chất lượng inference.
+`configs/local.yaml` chỉ dành cho checkout; không được đóng gói vào wheel.
 
 ## Extra: Tre Adapt (training)
 
