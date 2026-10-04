@@ -1,8 +1,9 @@
-"""Load developer configuration (configs/defaults.yaml + optional local.yaml)."""
+"""Load checkout or packaged defaults, with checkout-local overrides."""
 
 from __future__ import annotations
 
 from functools import lru_cache
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,9 @@ def load() -> dict[str, Any]:
             cfg = yaml.safe_load(defaults.read_text(encoding="utf-8")) or {}
         if local.is_file():
             _deep_merge(cfg, yaml.safe_load(local.read_text(encoding="utf-8")) or {})
+    else:
+        packaged_defaults = resources.files("tre_llm").joinpath("data/defaults.yaml")
+        cfg = yaml.safe_load(packaged_defaults.read_text(encoding="utf-8")) or {}
     return cfg
 
 

@@ -64,6 +64,7 @@ packages = ["src/tre_llm"]
 "models/registry" = "tre_llm/data/registry"
 "evals/tre-viet" = "tre_llm/data/evals/tre-viet"
 "recipes" = "tre_llm/data/recipes"
+"configs/defaults.yaml" = "tre_llm/data/defaults.yaml"
 
 [tool.hatch.build.targets.sdist]
 include = [

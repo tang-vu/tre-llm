@@ -18,6 +18,20 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: cd apps/web && npm ci && npm run build
+  wheel:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.12 && uv build
+      - name: Install wheel in a fresh environment
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/tre-wheel"
+          uv pip install --python "$RUNNER_TEMP/tre-wheel/bin/python" dist/*.whl
+      - name: Smoke test outside the checkout (no model downloads)
+        run: |
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/tre-wheel/bin/python" -I "$GITHUB_WORKSPACE/tests/wheel_smoke.py"
   integration:
     # Real-model job: only runs when explicitly triggered or on main with the
     # self-hosted runner label; uses cached runtime+model, never mocks.
