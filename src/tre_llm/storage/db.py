@@ -11,6 +11,7 @@ import sqlite3
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
+from time import monotonic, sleep
 from typing import Any
 
 from tre_llm import paths
@@ -121,6 +122,8 @@ MIGRATIONS: list[tuple[str, ...]] = [
 ]
 
 _SCHEMA_VERSION = len(MIGRATIONS)
+_WAL_INIT_TIMEOUT = 5.0
+_WAL_RETRY_INTERVAL = 0.05
 
 
 class DB:
@@ -129,14 +132,35 @@ class DB:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(str(self.path), check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.execute("PRAGMA foreign_keys = ON")
-        self._conn.execute("PRAGMA journal_mode = WAL")
         try:
+            self._conn.row_factory = sqlite3.Row
+            self._conn.execute("PRAGMA foreign_keys = ON")
+            self._enable_wal()
             self.migrate()
         except BaseException:
             self._conn.close()
             raise
+
+    def _enable_wal(self) -> None:
+        # Concurrent openers can race while switching a rollback-journal DB to
+        # WAL. SQLite may return BUSY immediately rather than honor busy_timeout.
+        # Own the bounded retry here, then restore the normal statement timeout.
+        timeout = self._conn.execute("PRAGMA busy_timeout").fetchone()[0]
+        self._conn.execute("PRAGMA busy_timeout = 0")
+        deadline = monotonic() + _WAL_INIT_TIMEOUT
+        try:
+            while True:
+                try:
+                    self._conn.execute("PRAGMA journal_mode = WAL").fetchone()
+                    return
+                except sqlite3.OperationalError as exc:
+                    code = getattr(exc, "sqlite_errorcode", 0) & 0xFF
+                    remaining = deadline - monotonic()
+                    if code not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED) or remaining <= 0:
+                        raise
+                    sleep(min(_WAL_RETRY_INTERVAL, remaining))
+        finally:
+            self._conn.execute(f"PRAGMA busy_timeout = {timeout}")
 
     def close(self) -> None:
         with self._lock:
