@@ -283,3 +283,31 @@ def test_models_select_hot_swap(client, monkeypatch, tmp_path):
         assert state.active_model == "new-model"
     finally:
         state.active_model = "fake-model"
+
+
+@pytest.mark.parametrize("question", ["diem", '"diem', 'diem"', '"Đà Nẵng"', 'điểm" thi', "diem\x00thi"])
+def test_document_question_quotes_and_vietnamese_citations(client, monkeypatch, question):
+    """Real SQLite + API with a fake answer: citation protocol, not inference."""
+    from types import SimpleNamespace
+
+    text = "Điểm thi được đăng ở Đà Nẵng."
+    result = client.post("/api/documents", json={"name": "notes.md", "content": text})
+    assert result.status_code == 200
+    doc_id = result.json()["id"]
+    calls = []
+
+    def generate(request):
+        calls.append(request)
+        assert text in request.messages[-1]["content"]
+        return SimpleNamespace(text="Đà Nẵng [1].")
+
+    monkeypatch.setattr(state.server.client, "generate", generate)
+    response = client.post("/api/ask", json={"question": question})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert len(calls) == 1 and body["grounded"]
+    assert body["citations"][0]["excerpt"] == text
+    assert body["citations"][0]["offset"] == 0
+    chunk_id = body["citations"][0]["chunk_id"]
+    chunk = client.get(f"/api/documents/chunk/{chunk_id}").json()
+    assert chunk["text"] == text and chunk["document_id"] == doc_id

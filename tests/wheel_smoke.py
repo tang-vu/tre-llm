@@ -37,9 +37,9 @@ def main() -> None:
         fixtures = [
             (
                 "notes.md",
-                "# Ghi chú\n\nHà Nội là thủ đô của Việt Nam.\n".encode(),
-                "thu do",
-                "Hà Nội",
+                "Điểm thi được đăng ở Đà Nẵng.\n".encode(),
+                '"diem',
+                "Điểm thi",
             ),
             (
                 "notes.pdf",
