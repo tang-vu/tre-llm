@@ -38,3 +38,13 @@ humans ──┘   (importable)           └─ external OpenAI-compatible serv
 - Human output mặc định tiếng Việt; JSON/identifier ổn định, không dịch.
 - Mọi schema có `schema_version`. Timestamp ISO-8601 UTC, units rõ ràng.
 - Không ghi path user/secret vào log public; export report mặc định đã redact.
+
+
+## Document search and index upgrades
+
+- `tre ask`, `/api/ask` and the document service treat queries as plain text, not an advanced FTS5 expression. After case/accent folding (including `đ`/`Đ` → `d`), whitespace-separated terms of at least two characters are quoted literally; up to 12 terms are joined with OR. Double quotes are escaped, and NUL is treated as a tokenizer separator inside a term. Operator-like words and punctuation are passed to SQLite's tokenizer as text, not executed as Boolean, prefix or column-filter syntax.
+- Retrieval keeps the existing BM25 candidate selection and distinct-term-hit reranking. Original chunk text and citation offsets retain their accents and case.
+- Schema 5 folds `đ`/`Đ` in existing `chunks.text_norm` and rebuilds the derived FTS index from those stored chunks. No original source file or model is needed, including when reimporting the same file returns `unchanged`. Documents, chunks' original text/IDs/offsets, hashes, conversations, settings and run records are preserved.
+- Stop all older TreLLM processes before upgrading. After schema 5 is applied, do not use a pre-fix version to write to that database or downgrade its writers: older imports would recreate incompatible normalized text.
+- Initial WAL setup retries only transient SQLite busy/locked errors for up to five seconds, restores the normal statement timeout afterward, and closes the connection if initialization fails. Other initialization errors propagate immediately.
+- Pending migrations run in one SQLite transaction with the schema version. Failure rolls back the derived data, index and version together and fails startup, allowing a later retry. Up-to-date opens do not acquire a migration writer lock. Large existing indexes may take longer on the first open and need disk space for SQLite's transaction journal; the migration does not load the corpus into Python memory.

@@ -50,7 +50,7 @@ def _extract_text(path: Path) -> str:
 def _norm(text: str) -> str:
     """Fold accents/case for accentless recall; original text stays untouched."""
     nfkd = unicodedata.normalize("NFKD", text)
-    return "".join(c for c in nfkd if not unicodedata.combining(c)).lower()
+    return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().replace("đ", "d")
 
 
 def _doc_id(path: Path) -> str:
@@ -137,16 +137,18 @@ def remove_document(doc_id: str, db: DB | None = None) -> bool:
 
 
 def search(query: str, k: int = 4, db: DB | None = None) -> list[dict[str, Any]]:
-    """FTS5 over folded text — accentless queries match accented docs."""
+    """Plain-text OR search over folded text, not an advanced FTS expression."""
     db = db or get_db()
     q = _norm(query).strip()
     if not q:
         return []
-    # Escape FTS5 special chars; AND the significant terms.
+    # Keep each whitespace term literal; OR the significant terms. Embedded
+    # quotes are doubled per FTS5 string syntax, never interpreted as operators.
     terms = [t for t in re.split(r"\s+", q) if len(t) >= 2]
     if not terms:
         return []
-    fts_q = " OR ".join(f'"{t}"' for t in terms[:12])
+    # FTS5 treats NUL as end-of-input; use a tokenizer separator instead.
+    fts_q = " OR ".join('"' + t.replace("\x00", " ").replace('"', '""') + '"' for t in terms[:12])
     rows = db.execute(
         "SELECT c.id, c.document_id, c.text, c.char_offset, d.name, "
         "bm25(chunks_fts) AS score FROM chunks_fts "
