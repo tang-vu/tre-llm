@@ -137,3 +137,15 @@ details.exp[open] > summary { margin-bottom: 8px; }
   .msg { max-width: 95%; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---- document imports ---- */
+.import-help, .import-queue { font-size: 13px; }
+.import-queue { margin: 16px 0; border-top: 1px solid var(--border); padding-top: 12px; }
+.import-list { list-style: none; padding: 0; margin: 8px 0; }
+.import-list li { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.import-detail { flex: 1 1 240px; min-width: 0; }
+.import-detail > span { margin-left: 8px; }
+.file-name, .import-error { overflow-wrap: anywhere; }
+.import-error { color: var(--danger); margin-top: 4px; }
+[data-theme="dark"] .import-error { color: #e8a49d; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

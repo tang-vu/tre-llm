@@ -1,55 +1,115 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { api, AskResp, DocEntry } from "../api";
 import { Markdown } from "../markdown";
+import { ImportQueue } from "../documents/importQueue";
+import { ImportList } from "../documents/ImportList";
 
 export default function DocsPage() {
   const [docs, setDocs] = useState<DocEntry[]>([]);
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<AskResp | null>(null);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
+  const [askError, setAskError] = useState("");
+  const [listError, setListError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [queue] = useState(() => new ImportQueue());
+  const imports = useSyncExternalStore(queue.subscribe, queue.getSnapshot);
+  const importing = imports.entries.some(entry => entry.status === "pending" || entry.status === "uploading");
+  const fileInput = useRef<HTMLInputElement>(null);
+  const mounted = useRef(false);
+  const refreshId = useRef(0);
+  const askId = useRef(0);
+  const asking = useRef(false);
+  const deletingId = useRef<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [showCite, setShowCite] = useState<number | null>(null);
 
-  const refresh = () => api.documents().then((r) => setDocs(r.documents)).catch(() => {});
-  useEffect(() => { refresh(); }, []);
+  const clearAnswer = useCallback(() => {
+    askId.current++;
+    asking.current = false;
+    setBusy(false);
+    setAnswer(null);
+    setShowCite(null);
+    setAskError("");
+  }, []);
 
-  const addFile = async (f: File) => {
-    setErr("");
-    if (!/\.(txt|md|markdown|pdf)$/i.test(f.name)) {
-      setErr(`Chỉ hỗ trợ .txt/.md/.pdf — "${f.name}" không hợp lệ.`);
-      return;
-    }
-    if (f.size > 4 * 1024 * 1024) {
-      setErr(`"${f.name}" quá lớn (giới hạn 4 MiB).`);
-      return;
-    }
+  const refresh = useCallback(async () => {
+    const id = ++refreshId.current;
+    setLoading(true);
+    setListError("");
     try {
-      if (/\.pdf$/i.test(f.name)) {
-        const buf = await f.arrayBuffer();
-        let bin = "";
-        new Uint8Array(buf).forEach((b) => { bin += String.fromCharCode(b); });
-        await api.addDocument(f.name, "", btoa(bin));
-      } else {
-        await api.addDocument(f.name, await f.text());
-      }
-      refresh();
-    } catch (e) { setErr(String(e)); }
+      const response = await api.documents();
+      if (!mounted.current || id !== refreshId.current) return;
+      setDocs(response.documents);
+      clearAnswer();
+    } catch (error) {
+      if (mounted.current && id === refreshId.current) setListError(`Không tải được danh sách tài liệu: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      if (mounted.current && id === refreshId.current) setLoading(false);
+    }
+  }, [clearAnswer]);
+
+  useEffect(() => {
+    mounted.current = true;
+    queue.start();
+    return () => {
+      mounted.current = false;
+      refreshId.current++;
+      askId.current++;
+      queue.stop();
+    };
+  }, [queue]);
+  useEffect(() => { void refresh(); }, [refresh, imports.settled]);
+  useEffect(() => {
+    if (!importing) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [importing]);
+
+  const addFiles = (files: File[]) => {
+    if (!files.length) return;
+    clearAnswer();
+    queue.enqueue(files);
   };
+  const retry = (id: number) => { clearAnswer(); queue.retry(id); };
 
   const ask = async () => {
-    if (!q.trim() || busy) return;
-    setBusy(true); setErr(""); setAnswer(null);
+    if (!q.trim() || asking.current || importing || deletingId.current || !docs.length || loading) return;
+    clearAnswer();
+    const id = ++askId.current;
+    asking.current = true;
+    setBusy(true);
     try {
-      setAnswer(await api.ask(q.trim()));
-    } catch (e) { setErr(String(e)); }
-    finally { setBusy(false); }
+      const response = await api.ask(q.trim());
+      if (mounted.current && id === askId.current) setAnswer(response);
+    } catch (error) {
+      if (mounted.current && id === askId.current) setAskError(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (mounted.current && id === askId.current) { asking.current = false; setBusy(false); }
+    }
   };
 
   const remove = async (id: string, name: string) => {
-    if (!window.confirm(`Xoá "${name}" và toàn bộ trích dẫn của nó?`)) return;
-    await api.deleteDocument(id).catch(() => {});
-    refresh();
+    if (deletingId.current || !window.confirm(`Xoá "${name}" và toàn bộ trích dẫn của nó?`)) return;
+    deletingId.current = id;
+    setDeleting(id);
+    setDeleteError("");
+    clearAnswer();
+    try {
+      await api.deleteDocument(id);
+      if (!mounted.current) return;
+      setDocs(current => current.filter(doc => doc.id !== id));
+      clearAnswer();
+      void refresh();
+    } catch (error) {
+      if (mounted.current) setDeleteError(`Không xoá được "${name}": ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      deletingId.current = null;
+      if (mounted.current) setDeleting(null);
+    }
   };
 
   return (
@@ -67,30 +127,44 @@ export default function DocsPage() {
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => {
           e.preventDefault(); setDragOver(false);
-          Array.from(e.dataTransfer.files).forEach((f) => void addFile(f));
+          addFiles(Array.from(e.dataTransfer.files));
         }}
         style={dragOver ? { borderColor: "var(--accent)", borderStyle: "dashed" } : {}}
       >
         <div className="row">
-          <label className="primary" style={{ padding: "7px 14px", borderRadius: 8, background: "var(--accent)", color: "#fff", cursor: "pointer", fontWeight: 500 }}>
-            Chọn file .txt/.md/.pdf
-            <input
-              type="file" multiple accept=".txt,.md,.markdown,.pdf" style={{ display: "none" }}
-              onChange={(e) => Array.from(e.target.files ?? []).forEach((f) => void addFile(f))}
-            />
-          </label>
+          <button className="primary" onClick={() => fileInput.current?.click()}>Chọn file .txt/.md/.pdf</button>
+          <input
+            ref={fileInput} type="file" multiple accept=".txt,.md,.markdown,.pdf" hidden
+            aria-label="Chọn file tài liệu"
+            onChange={(event) => {
+              const files = Array.from(event.currentTarget.files ?? []);
+              event.currentTarget.value = "";
+              addFiles(files);
+            }}
+          />
           <span className="muted">hoặc kéo thả vào đây</span>
         </div>
+        <p className="muted import-help">Tối đa 20 file trong hàng đợi, 4 MiB/file; nhập lần lượt trên máy này. Rời trang sẽ bỏ các file đang chờ; file đang xử lý có thể vẫn được thêm.</p>
+        {imports.notice && <div className="banner info" role="status">{imports.notice}</div>}
+        <ImportList entries={imports.entries} queue={queue} onRetry={retry} />
+        <div className="row">
+          <strong>Tài liệu đã nhập ({docs.length})</strong>
+          <button className="ghost" onClick={() => void refresh()} disabled={loading}>Tải lại danh sách</button>
+        </div>
+        {loading && <p role="status" className="muted">Đang tải danh sách…</p>}
+        {listError && <div className="banner err" role="alert">{listError} Tài liệu đã nhập vẫn được giữ lại. Hãy tải lại danh sách.</div>}
+        {deleteError && <div className="banner err" role="alert">{deleteError}</div>}
+        {!loading && !listError && !docs.length && <p className="muted">Chưa có tài liệu. Chọn hoặc kéo thả file để bắt đầu.</p>}
         {docs.length > 0 && (
           <table className="t" style={{ marginTop: 14 }}>
-            <thead><tr><th>Tài liệu</th><th>Chunks</th><th>Kích thước</th><th></th></tr></thead>
+            <thead><tr><th>Tài liệu</th><th>Chunks</th><th>Kích thước</th><th><span className="sr-only">Thao tác</span></th></tr></thead>
             <tbody>
               {docs.map((d) => (
                 <tr key={d.id}>
-                  <td>{d.name}</td>
+                  <td className="file-name">{d.name}</td>
                   <td>{d.chunk_count}</td>
                   <td className="mono">{(d.size_bytes / 1024).toFixed(1)} KiB</td>
-                  <td><button className="ghost" onClick={() => void remove(d.id, d.name)}>Xoá</button></td>
+                  <td><button className="ghost" disabled={deleting !== null} onClick={() => void remove(d.id, d.name)} aria-label={`Xoá ${d.name}`}>{deleting === d.id ? "Đang xoá…" : "Xoá"}</button></td>
                 </tr>
               ))}
             </tbody>
@@ -98,9 +172,10 @@ export default function DocsPage() {
         )}
       </div>
 
-      {err && <div className="banner err">{err}</div>}
+      {askError && <div className="banner err" role="alert">{askError}</div>}
 
       <div className="card">
+        {importing && <p className="muted" role="status">Chờ nhập xong để hỏi trên danh sách tài liệu mới nhất.</p>}
         <div className="composer" style={{ marginTop: 0 }}>
           <textarea
             value={q}
@@ -110,7 +185,7 @@ export default function DocsPage() {
             disabled={docs.length === 0}
             aria-label="Câu hỏi về tài liệu"
           />
-          <button className="primary" onClick={() => void ask()} disabled={busy || !q.trim() || docs.length === 0}>
+          <button className="primary" onClick={() => void ask()} disabled={busy || importing || deleting !== null || loading || !q.trim() || docs.length === 0}>
             {busy ? "Đang hỏi…" : "Hỏi"}
           </button>
         </div>

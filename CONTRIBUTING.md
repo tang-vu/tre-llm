@@ -13,7 +13,7 @@
 uv sync --all-extras      # hoặc không --all-extras nếu không cần train
 .venv/bin/python -m pytest tests/ -q
 .venv/bin/ruff check src tests
-cd apps/web && npm install && npm run build
+cd apps/web && npm ci && npm test && npm run build
 ```
 
 ## Quy ước
@@ -30,3 +30,5 @@ cd apps/web && npm install && npm run build
 - Thay đổi API: chạy `tests/test_api.py` + `tests/test_tre_api.py`.
 - Thay đổi eval/training data: `tests/test_suite.py` + `tests/test_dataprep.py` phải pass (leakage).
 - Integration test (model thật) chạy riêng: `pytest -m integration`.
+
+- UI tài liệu: `npm test` dùng DOM và API giả để kiểm tra hàng đợi/tương tác; đây là protocol tests, không phải bằng chứng inference hay kiểm tra trình duyệt thật.

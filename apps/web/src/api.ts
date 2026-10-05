@@ -47,11 +47,15 @@ export interface AskResp { answer: string; citations: Citation[]; grounded: bool
 export interface ConvEntry { id: string; title: string; model_id: string; created_at: string; updated_at: string }
 export interface ConvMsg { seq: number; role: string; content: string; reasoning: string }
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); }
+}
+
 async function j<T>(r: Response): Promise<T> {
   if (!r.ok) {
     let detail = `${r.status}`;
     try { detail = (await r.json()).detail || detail; } catch { /* keep status */ }
-    throw new Error(String(detail));
+    throw new ApiError(String(detail), r.status);
   }
   return r.json() as Promise<T>;
 }
