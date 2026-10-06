@@ -18,6 +18,8 @@
 
 ### Sửa
 
+- Giữ quyền sinh tuần tự cho `/v1/chat/completions` suốt vòng đời streaming và đóng nguồn trước khi nhả khoá khi hoàn tất, lỗi hoặc ngắt kết nối; giữ HTTP 409 khi bận và chặn đổi runtime trong lúc sinh.
+
 - Chat giữ đúng chủ sở hữu hội thoại/tin nhắn khi đổi trang, tải lịch sử hoặc dừng luồng; không làm mất câu hỏi đầu tiên hay ghi token vào hội thoại khác.
 - Giữ bản nháp/phản hồi chưa xác nhận trong phiên, cho tải lại ngữ cảnh và bỏ bản giữ có xác nhận; chặn gửi trong khi lịch sử chưa rõ hoặc yêu cầu cũ chưa kết thúc.
 - Hiển thị lỗi đọc/xoá/dừng, bảo vệ hội thoại đang sinh khỏi bị xoá, và kiểm tra hồi quy bằng DOM/SSE tổng hợp (không phải evidence inference).

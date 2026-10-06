@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -125,7 +125,7 @@ class ChatClient:
             pass
         return result
 
-    def generate_iter(self, req: GenerationRequest) -> Iterator[GenerationEvent]:
+    def generate_iter(self, req: GenerationRequest) -> Generator[GenerationEvent, None, None]:
         """Yield GenerationEvents for a request; honours cancel()."""
         result = GenerationResult()
         yield from self._stream(req, result)

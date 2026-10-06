@@ -16,19 +16,21 @@ from __future__ import annotations
 import json
 import threading
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, ClassVar
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from tre_llm.inference.client import ChatClient
 from tre_llm.runtimes.manager import RunningServer
 from tre_llm.schemas import GenerationRequest
+from tre_llm.server.streaming import GenerationStreamingResponse
 from tre_llm.storage.db import get_db
 from tre_llm.version import __version__
 
@@ -146,6 +148,8 @@ def create_app(server: RunningServer | None = None, active_model: str = "") -> F
     def chat_completions(body: ChatCompletionIn):
         if state.server is None:
             raise HTTPException(503, "Chưa có runtime — chạy `tre setup` trước.")
+        if body.stream:
+            return GenerationStreamingResponse(lambda: _chat(body), state.gen_lock)
         if not state.gen_lock.acquire(blocking=False):
             raise HTTPException(409, "Một yêu cầu khác đang chạy. Máy cục bộ xử lý tuần tự.")
         try:
@@ -154,6 +158,9 @@ def create_app(server: RunningServer | None = None, active_model: str = "") -> F
             state.gen_lock.release()
 
     def _chat(body: ChatCompletionIn):
+        # Stream setup runs only after the response owns the generation lock.
+        if state.server is None:
+            raise HTTPException(503, "Chưa có runtime — chạy `tre setup` trước.")
         req = GenerationRequest(
             model=body.model if body.model != "default" else state.active_model,
             messages=[m.model_dump() for m in body.messages],
@@ -169,10 +176,7 @@ def create_app(server: RunningServer | None = None, active_model: str = "") -> F
         client = state.server.client
 
         if body.stream:
-            return StreamingResponse(
-                _sse_stream(req, client), media_type="text/event-stream",
-                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-            )
+            return _sse_stream(req, client)
         result = client.generate(req)
         if result.error:
             raise HTTPException(502, f"Upstream lỗi: {result.error[:400]}")
@@ -196,39 +200,40 @@ def create_app(server: RunningServer | None = None, active_model: str = "") -> F
             "timings": result.timings,  # tre extension: real decode/prefill rates
         }
 
-    def _sse_stream(req: GenerationRequest, client: ChatClient) -> Iterator[bytes]:
+    def _sse_stream(req: GenerationRequest, client: ChatClient) -> Generator[bytes, None, None]:
         cid = f"chatcmpl-{uuid.uuid4().hex[:16]}"
         state.current_cancel.append(client.cancel)
         try:
-            for ev in client.generate_iter(req):
-                if ev.type == "token" or ev.type == "reasoning":
-                    delta = (
-                        {"content": ev.text}
-                        if ev.type == "token"
-                        else {"reasoning_content": ev.text}
-                    )
-                    chunk = {
-                        "id": cid,
-                        "object": "chat.completion.chunk",
-                        "created": int(datetime.now(UTC).timestamp()),
-                        "model": state.active_model,
-                        "choices": [{"index": 0, "delta": delta, "finish_reason": None}],
-                    }
-                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n".encode()
-                elif ev.type == "error":
-                    err = {"id": cid, "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {}, "finish_reason": "error"}], "error": ev.error}
-                    yield f"data: {json.dumps(err)}\n\n".encode()
-                elif ev.type == "done":
-                    chunk = {
-                        "id": cid,
-                        "object": "chat.completion.chunk",
-                        "created": int(datetime.now(UTC).timestamp()),
-                        "model": state.active_model,
-                        "choices": [{"index": 0, "delta": {}, "finish_reason": ev.finish_reason}],
-                        "usage": ev.usage,
-                        "timings": ev.timings,
-                    }
-                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n".encode()
+            with closing(client.generate_iter(req)) as events:
+                for ev in events:
+                    if ev.type == "token" or ev.type == "reasoning":
+                        delta = (
+                            {"content": ev.text}
+                            if ev.type == "token"
+                            else {"reasoning_content": ev.text}
+                        )
+                        chunk = {
+                            "id": cid,
+                            "object": "chat.completion.chunk",
+                            "created": int(datetime.now(UTC).timestamp()),
+                            "model": state.active_model,
+                            "choices": [{"index": 0, "delta": delta, "finish_reason": None}],
+                        }
+                        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n".encode()
+                    elif ev.type == "error":
+                        err = {"id": cid, "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {}, "finish_reason": "error"}], "error": ev.error}
+                        yield f"data: {json.dumps(err)}\n\n".encode()
+                    elif ev.type == "done":
+                        chunk = {
+                            "id": cid,
+                            "object": "chat.completion.chunk",
+                            "created": int(datetime.now(UTC).timestamp()),
+                            "model": state.active_model,
+                            "choices": [{"index": 0, "delta": {}, "finish_reason": ev.finish_reason}],
+                            "usage": ev.usage,
+                            "timings": ev.timings,
+                        }
+                        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n".encode()
             yield b"data: [DONE]\n\n"
         finally:
             if client.cancel in state.current_cancel:

@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+pytest_plugins = ["tests.generation_helpers"]
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
