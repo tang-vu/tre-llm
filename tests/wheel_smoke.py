@@ -5,6 +5,7 @@ This is packaging evidence, not inference-quality evidence.
 """
 
 import os
+import re
 import sys
 from importlib import resources
 from pathlib import Path
@@ -27,7 +28,14 @@ def main() -> None:
     assert config.get("runtime", "ubuntu_x64_url")
     assert len(config.get("runtime", "ubuntu_x64_sha256")) == 64
     assert catalog(), "The wheel must include the model registry."
-    assert resources.files("tre_llm").joinpath("webui/index.html").is_file()
+    webui = resources.files("tre_llm").joinpath("webui")
+    index = webui.joinpath("index.html").read_text(encoding="utf-8")
+    assets = re.findall(r'(?:src|href)="(/assets/[^"?#]+)"', index)
+    assert assets, "The shipped UI must reference built assets."
+    for asset in assets:
+        assert webui.joinpath(asset.lstrip("/")).is_file(), asset
+    assert any(asset.endswith(".js") for asset in assets), assets
+    print(f"Shipped UI references {len(assets)} existing assets.")
 
     with TemporaryDirectory(prefix="tre-wheel-smoke-") as directory:
         root = Path(directory)
