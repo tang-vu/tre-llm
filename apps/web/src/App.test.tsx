@@ -1,0 +1,30 @@
+import React from "react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import App from "./App";
+import { api } from "./api";
+import { chatSession } from "./chatSession";
+import { network, settle } from "./chat/testHelpers";
+
+vi.mock("./pages/Machine", () => ({ default: () => <h1>Máy của bạn</h1> }));
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); window.location.hash = ""; });
+it("retains the default session across actual route changes and warns before closing from another route", async () => {
+  const net = network();
+  vi.spyOn(api, "status").mockResolvedValue({ version: "synthetic", active_model: "fake", upstream_ready: true, installed: [] });
+  Object.defineProperty(HTMLElement.prototype, "scrollTo", { configurable: true, value: vi.fn() });
+  window.location.hash = "#/tro-chuyen";
+  render(<App />); await net.list();
+  fireEvent.change(screen.getByLabelText("Tin nhắn"), { target: { value: "Prompt" } });
+  fireEvent.click(screen.getByRole("button", { name: "Gửi" })); await settle();
+  fireEvent.change(screen.getByLabelText("Tin nhắn"), { target: { value: "Next draft" } });
+  await settle(() => { window.location.hash = "#/may"; window.dispatchEvent(new HashChangeEvent("hashchange")); });
+  expect(screen.queryByLabelText("Tin nhắn")).toBeNull();
+  const leaving = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(leaving); expect(leaving.defaultPrevented).toBe(true);
+  await net.wires[0].event({ type: "conv", id: "created" }); await net.wires[0].event({ type: "token", text: "While away" });
+  await settle(() => { window.location.hash = "#/tro-chuyen"; window.dispatchEvent(new HashChangeEvent("hashchange")); });
+  expect(screen.getByText("While away")).toBeTruthy(); expect((screen.getByLabelText("Tin nhắn") as HTMLTextAreaElement).value).toBe("Next draft");
+  expect(screen.getByRole("button", { name: "Dừng" })).toBeTruthy(); expect(net.cancellations).toHaveLength(0); expect(net.wires).toHaveLength(1);
+  await net.wires[0].event({ type: "done", finish_reason: "stop" }); await net.wires[0].end();
+  await settle(() => chatSession.discardDraft());
+  const finished = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(finished); expect(finished.defaultPrevented).toBe(false);
+});

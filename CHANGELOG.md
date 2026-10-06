@@ -16,6 +16,12 @@
 - Tre Adapt: manifest→prepare→validate(leakage)→preflight→LoRA run (pipeline)
 - Web UI React: Máy / Trò chuyện / Tài liệu / Phòng thử / Mô hình
 
+### Sửa
+
+- Chat giữ đúng chủ sở hữu hội thoại/tin nhắn khi đổi trang, tải lịch sử hoặc dừng luồng; không làm mất câu hỏi đầu tiên hay ghi token vào hội thoại khác.
+- Giữ bản nháp/phản hồi chưa xác nhận trong phiên, cho tải lại ngữ cảnh và bỏ bản giữ có xác nhận; chặn gửi trong khi lịch sử chưa rõ hoặc yêu cầu cũ chưa kết thúc.
+- Hiển thị lỗi đọc/xoá/dừng, bảo vệ hội thoại đang sinh khỏi bị xoá, và kiểm tra hồi quy bằng DOM/SSE tổng hợp (không phải evidence inference).
+
 ### Evidence (máy dev: Xeon E5-2678 v3, 31 GiB, CPU-only)
 
 - Qwen3.5-0.8B-Q4_K_M: 21 tok/s decode, 124 tok/s prompt, RSS 904 MiB

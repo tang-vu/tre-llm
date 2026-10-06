@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "./api";
+import { chatSession } from "./chatSession";
 import ChatPage from "./pages/Chat";
 import DocsPage from "./pages/Documents";
 import LabPage from "./pages/Lab";
@@ -30,6 +31,14 @@ export default function App() {
     () => window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false,
   );
   const [status, setStatus] = useState<{ upstream_ready: boolean; active_model: string } | null>(null);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (chatSession.hasUnsavedWork()) { event.preventDefault(); event.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";

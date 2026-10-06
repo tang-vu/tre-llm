@@ -103,20 +103,27 @@ export async function* streamChat(
   const reader = r.body.getReader();
   const dec = new TextDecoder("utf-8");
   let buf = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let i;
-    while ((i = buf.indexOf("\n\n")) >= 0) {
-      const frame = buf.slice(0, i);
-      buf = buf.slice(i + 2);
-      for (const line of frame.split("\n")) {
-        if (!line.startsWith("data:")) continue;
-        const data = line.slice(5).trim();
-        if (data === "[DONE]") return;
-        try { yield JSON.parse(data) as ChatEvent; } catch { /* skip */ }
+  let ended = false;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const frame = buf.slice(0, i);
+        buf = buf.slice(i + 2);
+        for (const line of frame.split("\n")) {
+          if (!line.startsWith("data:")) continue;
+          const data = line.slice(5).trim();
+          // [DONE] precedes server cleanup. Keep reading through HTTP EOF.
+          if (data === "[DONE]") { ended = true; continue; }
+          if (ended) continue;
+          try { yield JSON.parse(data) as ChatEvent; } catch { /* skip */ }
+        }
       }
     }
+  } finally {
+    reader.releaseLock();
   }
 }
